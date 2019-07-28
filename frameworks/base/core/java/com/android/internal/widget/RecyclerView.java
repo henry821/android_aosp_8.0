@@ -2950,6 +2950,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
 
     @Override
     protected void onMeasure(int widthSpec, int heightSpec) {
+    	//如果没有设置LayoutManager,则直接执行defaultOnMeasure方法，所以会展示空白页面
         if (mLayout == null) {
             defaultOnMeasure(widthSpec, heightSpec);
             return;
@@ -2959,8 +2960,9 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
             final int heightMode = MeasureSpec.getMode(heightSpec);
             final boolean skipMeasure = widthMode == MeasureSpec.EXACTLY
                     && heightMode == MeasureSpec.EXACTLY;
-            mLayout.onMeasure(mRecycler, mState, widthSpec, heightSpec);
+            mLayout.onMeasure(mRecycler, mState, widthSpec, heightSpec); //此处执行的是defaultOnMeasure方法,没有测量item布局,所以仍然不会显示item
             if (skipMeasure || mAdapter == null) {
+				//如果宽高是固定值或者没有设置Adapter,则跳过Measure过程直接进入Layout过程
                 return;
             }
             if (mState.mLayoutStep == State.STEP_START) {
@@ -3023,6 +3025,8 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
 
     /**
      * Used when onMeasure is called before layout manager is set
+     *
+     * 在设置LayoutManager之前调用onMeasure方法时使用
      */
     void defaultOnMeasure(int widthSpec, int heightSpec) {
         // calling LayoutManager here is not pretty but that API is already public and it is better
@@ -3426,6 +3430,12 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
      * - decide which animation should run
      * - save information about current views
      * - If necessary, run predictive layout and save its information
+     *
+     * layout的第一步,在这一步中有以下操作:
+     * - 处理Adapter的更新
+     * - 决定运行哪个动画
+     * - 保存当前视图的信息
+     * - 如果必要的话，执行上一个布局的操作并保存它的信息(predictive:预言性的)
      */
     private void dispatchLayoutStep1() {
         mState.assertLayoutStep(State.STEP_START);
@@ -3517,6 +3527,9 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
     /**
      * The second layout step where we do the actual layout of the views for the final state.
      * This step might be run multiple times if necessary (e.g. measure).
+     *
+     * layout的第二步,在这一步我们为视图执行真正的布局操作,为了使其达到最终的状态。
+     * 如果必要的话这一步可能会运行多次(例如: measure)
      */
     private void dispatchLayoutStep2() {
         eatRequestLayout();

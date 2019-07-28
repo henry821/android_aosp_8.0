@@ -52,7 +52,7 @@ import java.io.InputStream;
  * the original Context.
  */
 public class ContextWrapper extends Context {
-    Context mBase;
+    Context mBase; //mBase = ContextImpl
 
     public ContextWrapper(Context base) {
         mBase = base;
