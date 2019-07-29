@@ -1001,6 +1001,12 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
      *                               invalidation).
      * @param removeAndRecycleViews  If true, we'll remove and recycle all existing views. If
      *                               compatibleWithPrevious is false, this parameter is ignored.
+     *
+     * 使用新的Adapter代替现有Adapter并触发监听器
+     * 
+     * @参数 adapter 新的Adapter
+     * @参数 compatibleWithPrevious 如果为true,则新Adapter继续使用现有Adapter中的ViewHolder和ItemType(帮助我们避免缓存失效)
+     * @参数 removeAndRecycleViews 如果我true,我们会移除并且回收所有存在的视图。如果compatibleWithPrevious是false,则忽略此参数
      */
     private void setAdapterInternal(Adapter adapter, boolean compatibleWithPrevious,
             boolean removeAndRecycleViews) {
@@ -6265,6 +6271,11 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
      * within a {@link RecyclerView}.</p>
      *
      * @param <VH> A class that extends ViewHolder that will be used by the adapter.
+     *
+     * Adapter的基类
+     * Adapters将应用独有的数据集与RecyclerView中显示的视图绑定在一起。
+     *
+     * @参数 <VH> 一个继承自ViewHolder的类,这个类会被Adapter使用
      */
     public abstract static class Adapter<VH extends ViewHolder> {
         private final AdapterDataObservable mObservable = new AdapterDataObservable();
@@ -6623,6 +6634,20 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
          * @see #notifyItemRangeChanged(int, int)
          * @see #notifyItemRangeInserted(int, int)
          * @see #notifyItemRangeRemoved(int, int)
+         *
+         * 通知每个注册的观察者:数据集合已经发生变化
+         * 
+         * 数据变化事件有两种不同的类型:条目变化和结构变化。
+         * 条目变化为一个单独条目数据发生更新但是没有发生位置上的变化。
+         * 结构变化为在一个数据集合里有增加、删除、移动情况发生。
+         *
+         * 这个事件不指定数据集合是哪种变化,而是强迫每一个观察者认定所有存在的条目和结构都不再有效。
+         * LayoutManager会被强迫为所有可见条目执行重新绑定和重新布局操作。
+         * 
+         * RecyclerView会尝试为Adapter综合可见的结构变化事件,当使用这个方法时,Adapter会报告他们拥有稳定的ID(stable IDs)
+         * 这对于动画和可见对象持久化有帮助,但是单独条目的视图仍然需要被重新绑定和重新布局。
+         *
+         * 如果你使用一个Adapter,使用更多特定的变化事件会更加高效。把使用notifyDataSetChanged作为最后手段。
          */
         public final void notifyDataSetChanged() {
             mObservable.notifyChanged();
