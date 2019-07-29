@@ -131,6 +131,8 @@ public class LinearLayoutManager extends RecyclerView.LayoutManager implements
     /**
      *  Re-used variable to keep anchor information on re-layout.
      *  Anchor position and coordinate defines the reference point for LLM while doing a layout.
+     *
+     *  开始绘制的锚点
      * */
     final AnchorInfo mAnchorInfo = new AnchorInfo();
 
@@ -469,6 +471,13 @@ public class LinearLayoutManager extends RecyclerView.LayoutManager implements
         // 3) fill towards end, stacking from top
         // 4) scroll to fulfill requirements like stack from bottom.
         // create layout state
+        //
+        // 布局算法：
+        // 1) 通过检查子Item和其他参数,找到一个锚点坐标和一个锚点Item位置
+        // 2) 向上填充,从底部堆叠
+        // 3) 向下填充,从顶部堆叠
+        // 4) 滚动着满足布局要求,例如从底部堆叠。
+        // 创建LayoutState类
         if (DEBUG) {
             Log.d(TAG, "is pre layout:" + state.isPreLayout());
         }
@@ -485,13 +494,17 @@ public class LinearLayoutManager extends RecyclerView.LayoutManager implements
         ensureLayoutState();
         mLayoutState.mRecycle = false;
         // resolve layout direction
+        // 判断绘制方向,给mShouldReverseLayout赋值。默认是正向绘制,则mShouldReverseLayout是false
         resolveShouldLayoutReverse();
 
+		//mValid的默认值是false,一次测量之后设为true,onLayout完成后会回调执行reset方法,又变为false
         if (!mAnchorInfo.mValid || mPendingScrollPosition != NO_POSITION
                 || mPendingSavedState != null) {
             mAnchorInfo.reset();
-            mAnchorInfo.mLayoutFromEnd = mShouldReverseLayout ^ mStackFromEnd;
+			//mLayoutFromEnd默认为false
+            mAnchorInfo.mLayoutFromEnd = mShouldReverseLayout ^ mStackFromEnd; //异或:相同为0,不同为1
             // calculate anchor position and coordinate
+            // 计算锚点的位置和偏移量
             updateAnchorInfoForLayout(recycler, state, mAnchorInfo);
             mAnchorInfo.mValid = true;
         }
@@ -581,6 +594,7 @@ public class LinearLayoutManager extends RecyclerView.LayoutManager implements
                 startOffset = mLayoutState.mOffset;
             }
         } else {
+            // 正常绘制流程: 先往下填充,再往上填充
             // fill towards end
             updateLayoutStateToFillEnd(mAnchorInfo);
             mLayoutState.mExtra = extraForEnd;
@@ -631,6 +645,7 @@ public class LinearLayoutManager extends RecyclerView.LayoutManager implements
             }
         }
         layoutForPredictiveAnimations(recycler, state, startOffset, endOffset);
+		// 完成后重置参数
         if (!state.isPreLayout()) {
             mOrientationHelper.onLayoutComplete();
         } else {
@@ -2035,6 +2050,8 @@ public class LinearLayoutManager extends RecyclerView.LayoutManager implements
     /**
      * Helper class that keeps temporary state while {LayoutManager} is filling out the empty
      * space.
+     *
+     * 一个帮助类,这个类保存了LayoutManager填充空白区域时的临时状态
      */
     static class LayoutState {
 
@@ -2054,33 +2071,45 @@ public class LinearLayoutManager extends RecyclerView.LayoutManager implements
 
         /**
          * We may not want to recycle children in some cases (e.g. layout)
+         *
+         * 在某些情况下(例如:layout)我们可能不希望复用条目
          */
         boolean mRecycle = true;
 
         /**
          * Pixel offset where layout should start
+         *
+         * 开始布局时的像素偏移量
          */
         int mOffset;
 
         /**
          * Number of pixels that we should fill, in the layout direction.
+         *
+         * 在布局方向上填充需要的像素数量
          */
         int mAvailable;
 
         /**
          * Current position on the adapter to get the next item.
+         *
+         * 在adapter中的当前位置(为了拿到下一个条目)
          */
         int mCurrentPosition;
 
         /**
          * Defines the direction in which the data adapter is traversed.
          * Should be {@link #ITEM_DIRECTION_HEAD} or {@link #ITEM_DIRECTION_TAIL}
+         *
+         * 定义了adapter遍历数据的方向
          */
         int mItemDirection;
 
         /**
          * Defines the direction in which the layout is filled.
          * Should be {@link #LAYOUT_START} or {@link #LAYOUT_END}
+         *
+         * 定义了布局填充的方向
          */
         int mLayoutDirection;
 
@@ -2102,6 +2131,9 @@ public class LinearLayoutManager extends RecyclerView.LayoutManager implements
          * Equal to {@link RecyclerView.State#isPreLayout()}. When consuming scrap, if this value
          * is set to true, we skip removed views since they should not be laid out in post layout
          * step.
+         *
+         * 和RecyclerView.State#isPreLayout值一样。
+         * 当消耗碎片(缓存)时,如果这个值设置为true,则不移除这些View,因为他们不该在布局后(post layout)这一步被放置
          */
         boolean mIsPreLayout = false;
 
@@ -2136,9 +2168,11 @@ public class LinearLayoutManager extends RecyclerView.LayoutManager implements
          * @return The next element that we should layout.
          */
         View next(RecyclerView.Recycler recycler) {
+        	// 默认mScapList为null,但是执行layoutForPredictiveAnimations方法的时候不会为空
             if (mScrapList != null) {
                 return nextViewFromScrapList();
             }
+			//重要,从recycler获得View,mScrapList是被LayoutManager持有,Recycler是被RecyclerView持有
             final View view = recycler.getViewForPosition(mCurrentPosition);
             mCurrentPosition += mItemDirection;
             return view;
