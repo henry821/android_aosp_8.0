@@ -4094,6 +4094,14 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
      * It is still possible for items to be prefetched while mDataSetHasChangedAfterLayout == true,
      * so calling this method *must* be associated with marking the cache invalid, so that the
      * only valid items that remain in the cache, once layout occurs, are prefetched items.
+     *
+     * 调用这个方法为了表示Adapter里的所有数据都改变了(通常来说,因为调用了swapAdapter或者notifyDataSetChanged)。
+     * 一旦发生布局操作,所有附着的条目都会被丢弃。注意这个工作是延时的,因为RecyclerView需要一个布局来解决数据集的非递增的改变。
+     *
+     * 附着的条目会被打上FLAG_ADAPTER_POSITION_UNKNOWN标签,而且可能不会被缓存。
+     *
+     * 当mDataSetHasChangedAfterLayout字段为true时,条目仍然有可能会被提前得到。
+     * 所以调用这个方法时一定要同时把缓存标记为无效状态,以便于缓存里留下的条目都是有效的,一旦开始布局,会被预先取出来。
      */
     void setDataSetChangedAfterLayout() {
         if (mDataSetHasChangedAfterLayout) {
