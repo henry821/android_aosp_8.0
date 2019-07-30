@@ -32,6 +32,11 @@ import java.io.File;
  * <p><strong>Do not cache optimized classes on external storage.</strong>
  * External storage does not provide access controls necessary to protect your
  * application from code injection attacks.
+ *
+ * 一个加载dex文件(包含dex文件的jar和apk也算)的类加载器。
+ * 这个类加载器可以执行不包含在应用中的代码。
+ *
+ * 这个类加载器需要一个应用私有、可写的文件夹来缓存优化后的类。
  */
 public class DexClassLoader extends BaseDexClassLoader {
     /**
@@ -51,6 +56,12 @@ public class DexClassLoader extends BaseDexClassLoader {
      *     libraries, delimited by {@code File.pathSeparator}; may be
      *     {@code null}
      * @param parent the parent class loader
+     *
+     * @参数 dexPath dex相关文件路径集合,多个路径用分割符分割,默认分隔符为":"
+     * @参数 optimizedDirectory 解压的dex文件存储路径,这个路径必须是一个内部存储路径,
+     *		 					一般情况下使用当前应用的私有路径:/data/data/<package name>/…
+     * @参数 librarySearchPath 包含C/C++库的路径集合,多个路径用文件分隔符分割,可以为null
+     * @参数 parent 父加载器
      */
     public DexClassLoader(String dexPath, String optimizedDirectory,
             String librarySearchPath, ClassLoader parent) {

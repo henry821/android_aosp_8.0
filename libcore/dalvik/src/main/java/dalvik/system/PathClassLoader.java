@@ -21,6 +21,8 @@ package dalvik.system;
  * of files and directories in the local file system, but does not attempt to
  * load classes from the network. Android uses this class for its system class
  * loader and for its application class loader(s).
+ *
+ * PathClassLoader用来加载系统类和应用程序的类
  */
 public class PathClassLoader extends BaseDexClassLoader {
     /**
@@ -33,6 +35,10 @@ public class PathClassLoader extends BaseDexClassLoader {
      * resources, delimited by {@code File.pathSeparator}, which
      * defaults to {@code ":"} on Android
      * @param parent the parent class loader
+     *
+     * PathClassLoader的构造方法中没有参数optimizedDirectory,这是因为PathClassLoader已经默认了参数
+     * optimizedDirectory的值为:/data/dalvik-cache,很显然PathClassLoader无法定义解压的dex文件存储路径,
+     * 因此PathClassLoader通常用来加载已经安装的apk的dex文件(安装的apk的dex文件会存储在/data/dalvik-cache中)
      */
     public PathClassLoader(String dexPath, ClassLoader parent) {
         super(dexPath, null, null, parent);
