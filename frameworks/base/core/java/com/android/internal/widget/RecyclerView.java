@@ -3264,12 +3264,12 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
             return;
         }
         mState.mIsMeasuring = false;
-        if (mState.mLayoutStep == State.STEP_START) {
+        if (mState.mLayoutStep == State.STEP_START) { //初次布局进入此处
             dispatchLayoutStep1();
             mLayout.setExactMeasureSpecsFrom(this);
             dispatchLayoutStep2();
         } else if (mAdapterHelper.hasUpdates() || mLayout.getWidth() != getWidth()
-                || mLayout.getHeight() != getHeight()) {
+                || mLayout.getHeight() != getHeight()) { //数据变化或者布局变化进入此处
             // First 2 steps are done in onMeasure but looks like we have to run again due to
             // changed size.
             mLayout.setExactMeasureSpecsFrom(this);
@@ -4909,7 +4909,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
 
             setDataSetChangedAfterLayout();
             if (!mAdapterHelper.hasPendingUpdates()) {
-                requestLayout();
+                requestLayout(); //重新执行布局逻辑(measure、layout、draw)
             }
         }
 
@@ -9987,12 +9987,12 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
      * strong references to extra off-screen item views for caching purposes</p>
      */
     public abstract static class ViewHolder {
-        public final View itemView;
+        public final View itemView; //会被当做Child View添加到RecyclerView中
         WeakReference<RecyclerView> mNestedRecyclerView;
-        int mPosition = NO_POSITION;
+        int mPosition = NO_POSITION; //标记当前ViewHolder在Adapter中所处的位置
         int mOldPosition = NO_POSITION;
         long mItemId = NO_ID;
-        int mItemViewType = INVALID_TYPE;
+        int mItemViewType = INVALID_TYPE; //ViewHolder的Type,当ViewHolder保存到RecyclerPool时,主要靠这个类型来对ViewHolder做复用
         int mPreLayoutPosition = NO_POSITION;
 
         // The item that this holder is shadowing during an item change event/animation
@@ -10093,7 +10093,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
          */
         static final int FLAG_BOUNCED_FROM_HIDDEN_LIST = 1 << 13;
 
-        private int mFlags;
+        private int mFlags; //标记ViewHolder的状态
 
         private static final List<Object> FULLUPDATE_PAYLOADS = Collections.EMPTY_LIST;
 

@@ -594,21 +594,21 @@ public class LinearLayoutManager extends RecyclerView.LayoutManager implements
                 startOffset = mLayoutState.mOffset;
             }
         } else {
-            // 正常绘制流程: 先往下填充,再往上填充
+            // 正常绘制流程: 先往下填充,再往上填充，这里的锚点其实是RecyclerView最顶部的View
             // fill towards end
-            updateLayoutStateToFillEnd(mAnchorInfo);
+            updateLayoutStateToFillEnd(mAnchorInfo); //确定AnchorView到RecyclerView底部的布局可用空间
             mLayoutState.mExtra = extraForEnd;
-            fill(recycler, mLayoutState, state, false);
+            fill(recycler, mLayoutState, state, false); //填充View,从AnchorView到RecyclerView的底部
             endOffset = mLayoutState.mOffset;
             final int lastElement = mLayoutState.mCurrentPosition;
             if (mLayoutState.mAvailable > 0) {
                 extraForStart += mLayoutState.mAvailable;
             }
             // fill towards start
-            updateLayoutStateToFillStart(mAnchorInfo);
+            updateLayoutStateToFillStart(mAnchorInfo); //确定AnchorView到RecyclerView顶部的布局可用空间
             mLayoutState.mExtra = extraForStart;
             mLayoutState.mCurrentPosition += mLayoutState.mItemDirection;
-            fill(recycler, mLayoutState, state, false);
+            fill(recycler, mLayoutState, state, false); //填充View,从AnchorView到RecyclerView的顶部
             startOffset = mLayoutState.mOffset;
 
             if (mLayoutState.mAvailable > 0) {
@@ -779,8 +779,8 @@ public class LinearLayoutManager extends RecyclerView.LayoutManager implements
             return false;
         }
         View referenceChild = anchorInfo.mLayoutFromEnd
-                ? findReferenceChildClosestToEnd(recycler, state)
-                : findReferenceChildClosestToStart(recycler, state);
+                ? findReferenceChildClosestToEnd(recycler, state) 	 //如果是从end(尾部)位置开始布局,则寻找最接近end位置的View作为锚点View
+                : findReferenceChildClosestToStart(recycler, state); //如果是从start(头部)位置开始布局,则寻找最接近start位置的View作为锚点View
         if (referenceChild != null) {
             anchorInfo.assignFromView(referenceChild);
             // If all visible views are removed in 1 pass, reference child might be out of bounds.
@@ -1499,14 +1499,14 @@ public class LinearLayoutManager extends RecyclerView.LayoutManager implements
             recycleByLayoutState(recycler, layoutState);
         }
         int remainingSpace = layoutState.mAvailable + layoutState.mExtra;
-        LayoutChunkResult layoutChunkResult = mLayoutChunkResult;
-        while ((layoutState.mInfinite || remainingSpace > 0) && layoutState.hasMore(state)) {
+        LayoutChunkResult layoutChunkResult = mLayoutChunkResult; //保存布局一个Child View的结果
+        while ((layoutState.mInfinite || remainingSpace > 0) && layoutState.hasMore(state)) { //有剩余空间的话,就一直添加Child View
             layoutChunkResult.resetInternal();
-            layoutChunk(recycler, state, layoutState, layoutChunkResult);
+            layoutChunk(recycler, state, layoutState, layoutChunkResult); //布局Child View的核心方法
             if (layoutChunkResult.mFinished) {
                 break;
             }
-            layoutState.mOffset += layoutChunkResult.mConsumed * layoutState.mLayoutDirection;
+            layoutState.mOffset += layoutChunkResult.mConsumed * layoutState.mLayoutDirection; //保存到本次layoutChunk后共消耗了多少空间
             /**
              * Consume the available space if:
              * * layoutChunk did not request to be ignored
