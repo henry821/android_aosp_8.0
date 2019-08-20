@@ -262,6 +262,12 @@ public class Toast {
      * @param duration How long to display the message.  Either {@link #LENGTH_SHORT} or
      *                 {@link #LENGTH_LONG}
      *
+     * 生成一个仅包含TextView的标准toast
+     *
+     * @参数 context 使用Application或者Activity Context
+     * @参数 text 需要显示的文本,可以是格式化文本
+     * @参数 duration 展示信息的时长,需要LENGTH_SHORT或者LENGTH_LONG
+     *
      */
     public static Toast makeText(Context context, CharSequence text, @Duration int duration) {
         return makeText(context, null, text, duration);
@@ -271,6 +277,8 @@ public class Toast {
      * Make a standard toast to display using the specified looper.
      * If looper is null, Looper.myLooper() is used.
      * @hide
+     *
+     * 使用特定的looper展示一个toast。如果looper是null,则使用Looper.myLooper()
      */
     public static Toast makeText(@NonNull Context context, @Nullable Looper looper,
             @NonNull CharSequence text, @Duration int duration) {
@@ -385,7 +393,9 @@ public class Toast {
 
             if (looper == null) {
                 // Use Looper.myLooper() if looper is not specified.
+                // 如果没有指定looper,则使用当前线程的looper
                 looper = Looper.myLooper();
+				// 如果当前线程没有looper,则抛出异常
                 if (looper == null) {
                     throw new RuntimeException(
                             "Can't toast on a thread that has not called Looper.prepare()");

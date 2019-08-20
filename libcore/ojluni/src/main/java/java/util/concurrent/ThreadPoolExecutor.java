@@ -459,6 +459,8 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
      * queues such as DelayQueues for which poll() is allowed to
      * return null even if it may later return non-null when delays
      * expire.
+     *
+     * 这个队列用来保持任务和切换到工作线程。
      */
     private final BlockingQueue<Runnable> workQueue;
 
@@ -536,6 +538,10 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
      * Threads use this timeout when there are more than corePoolSize
      * present or if allowCoreThreadTimeOut. Otherwise they wait
      * forever for new work.
+     *
+     * 等待工作的空闲线程的超时时间(纳秒)
+     * 当线程数量超过核心线程数量或者设置了allowCoreThreadTimeOut时会用到这个超时时间
+     * 否则线程们会永远等待新工作
      */
     private volatile long keepAliveTime;
 
@@ -543,6 +549,9 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
      * If false (default), core threads stay alive even when idle.
      * If true, core threads use keepAliveTime to time out waiting
      * for work.
+     *
+     * 如果是false(默认)，则核心线程即使在空闲状态也会存活。
+     * 如果是true，核心线程在等待工作时会使用keepAliveTime这个时间计算超时时间
      */
     private volatile boolean allowCoreThreadTimeOut;
 
@@ -550,12 +559,17 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
      * Core pool size is the minimum number of workers to keep alive
      * (and not allow to time out etc) unless allowCoreThreadTimeOut
      * is set, in which case the minimum is zero.
+     *
+     * 核心线程数量是workers保持存活(不允许超时等)的最小数量，除非设置了allowCoreThreadTimeOut这个属性
+     * 最小数量是0
      */
     private volatile int corePoolSize;
 
     /**
      * Maximum pool size. Note that the actual maximum is internally
      * bounded by CAPACITY.
+     *
+     * 最大线程数量，注意实际的最大数量受内部容量限制
      */
     private volatile int maximumPoolSize;
 
