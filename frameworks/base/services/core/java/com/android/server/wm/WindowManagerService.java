@@ -1015,7 +1015,7 @@ public class WindowManagerService extends IWindowManager.Stub
                 com.android.internal.R.bool.config_allowAnimationsInLowPowerMode);
         mMaxUiWidth = context.getResources().getInteger(
                 com.android.internal.R.integer.config_maxUiWidth);
-        mInputManager = inputManager; // Must be before createDisplayContentLocked.
+        mInputManager = inputManager; // Must be before createDisplayContentLocked. 保存传进来的InputManagerService，这样WMS就持有了IMS的引用
         mDisplayManagerInternal = LocalServices.getService(DisplayManagerInternal.class);
         mDisplaySettings = new DisplaySettings();
         mDisplaySettings.readSettingsLocked();
@@ -1036,9 +1036,9 @@ public class WindowManagerService extends IWindowManager.Stub
 
         mFxSession = new SurfaceSession();
         mDisplayManager = (DisplayManager)context.getSystemService(Context.DISPLAY_SERVICE);
-        mDisplays = mDisplayManager.getDisplays();
+        mDisplays = mDisplayManager.getDisplays(); //得到Dsplay数组(每个显示设备都有一个Display实例)
         for (Display display : mDisplays) {
-            createDisplayContentLocked(display);
+            createDisplayContentLocked(display); //将Display封装成DisplayContent，DisplayContent用来描述一块屏幕
         }
 
         mKeyguardDisableHandler = new KeyguardDisableHandler(mContext, mPolicy);
@@ -1080,7 +1080,7 @@ public class WindowManagerService extends IWindowManager.Stub
         mBoundsAnimationController = new BoundsAnimationController(context, mAppTransition,
                 AnimationThread.getHandler(), animationHandler);
 
-        mActivityManager = ActivityManager.getService();
+        mActivityManager = ActivityManager.getService(); //得到ActivityManagerService实例，并赋值给mActivityManager(IActivityManager类型)
         mAmInternal = LocalServices.getService(ActivityManagerInternal.class);
         mAppOps = (AppOpsManager)context.getSystemService(Context.APP_OPS_SERVICE);
         AppOpsManager.OnOpChangedInternalListener opListener =
@@ -1116,16 +1116,19 @@ public class WindowManagerService extends IWindowManager.Stub
                 PowerManager.SCREEN_BRIGHT_WAKE_LOCK | PowerManager.ON_AFTER_RELEASE, TAG_WM);
         mHoldingScreenWakeLock.setReferenceCounted(false);
 
-        mAnimator = new WindowAnimator(this);
+        mAnimator = new WindowAnimator(this); //创建了WindowAnimator，它用于管理所有的窗口动画
 
         mAllowTheaterModeWakeFromLayout = context.getResources().getBoolean(
                 com.android.internal.R.bool.config_allowTheaterModeWakeFromWindowLayout);
 
 
         LocalServices.addService(WindowManagerInternal.class, new LocalService());
-        initPolicy();
+        initPolicy(); //初始化了窗口管理策略的接口类WindowManagerPolicy(WMP)，它用来定义一个窗口策略所要遵循的通用规范
 
         // Add ourself to the Watchdog monitors.
+        // 将自身也就是WMS通过addMonitor方法添加到Watchdog中，Watchdog用来监控系统的一些关键服务的运行状况(比如传入的WMS的运行状况)，
+        // 这些被监控的服务都会实现Watchdog.Monitor接口。
+        // Watchdog每分钟都会对被监控的系统服务进行检查，如果被监控的系统服务出现了死锁，则会杀死Watchdog所在的进程，也就是SystemServer进程
         Watchdog.getInstance().addMonitor(this);
 
         openSurfaceTransaction();
