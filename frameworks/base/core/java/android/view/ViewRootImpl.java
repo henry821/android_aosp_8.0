@@ -119,6 +119,13 @@ import java.util.concurrent.CountDownLatch;
  * detail of {@link WindowManagerGlobal}.
  *
  * {@hide}
+ *
+ * 作用：
+ * 1.View树的根并管理View树
+ * 2.出发View的测量、布局和绘制
+ * 3.输入事件的中转站
+ * 4.管理Surface
+ * 5.负责与WMS进行进程间通信
  */
 @SuppressWarnings({"EmptyCatchBlock", "PointlessBooleanExpression"})
 public final class ViewRootImpl implements ViewParent,
@@ -723,6 +730,11 @@ public final class ViewRootImpl implements ViewParent,
                     mOrigWindowType = mWindowAttributes.type;
                     mAttachInfo.mRecomputeGlobalAttributes = true;
                     collectViewAttributes();
+					//mWindowSession是IWindowSession类型的，它是一个Binder对象，用于进行进程间通信
+					//IWindowSession是Client端的代理，它的Server端的实现为Session
+					//此前包含ViewRootImpl在内的代码逻辑都是运行在本地进程的，
+					//而Session的addToDisplay方法则运行在WMS所在的进程
+					//每个应用程序进程都会对应一个Session，WMS会用ArrayList来保存这些Session
                     res = mWindowSession.addToDisplay(mWindow, mSeq, mWindowAttributes,
                             getHostVisibility(), mDisplay.getDisplayId(),
                             mAttachInfo.mContentInsets, mAttachInfo.mStableInsets,

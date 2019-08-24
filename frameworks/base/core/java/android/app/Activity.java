@@ -6945,6 +6945,7 @@ public class Activity extends ContextThemeWrapper
             }
         }
 
+		//这个方法的具体实现在PhoneWindow的父类Window中
         mWindow.setWindowManager(
                 (WindowManager)context.getSystemService(Context.WINDOW_SERVICE),
                 mToken, mComponent.flattenToString(),

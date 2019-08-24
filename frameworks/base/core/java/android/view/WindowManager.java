@@ -116,6 +116,8 @@ public interface WindowManager extends ViewManager {
      * </p>
      *
      * @return The display that this window manager is managing.
+     *
+     * 得到这个WindowManager实例将Window添加到哪个屏幕上了，换句话说，就是得到WindowManager所管理的屏幕(Display)
      */
     public Display getDefaultDisplay();
 
@@ -126,6 +128,8 @@ public interface WindowManager extends ViewManager {
      * for normal applications; using it correctly requires great care.
      *
      * @param view The view to be removed.
+	 *
+     * 规定在这个方法返回前要立即执行View.onDetatchedFromWindow()，来完成传入的View相关的销毁工作
      */
     public void removeViewImmediate(View view);
 

@@ -80,6 +80,11 @@ class AppTokenList extends ArrayList<AppWindowToken> {
 /**
  * Version of WindowToken that is specifically for a particular application (or
  * really activity) that is displaying windows.
+ *
+ * WindowToken：窗口令牌，当应用程序想要向WMS申请创建一个窗口，则需要向WMS出示有效的WindowToken。
+                它将相同组件(比如Activity)的窗口(WindowState)集合在一起，方便管理。
+ * AppWindowToken作为WindowToken的子类，主要用来描述应用程序的WindowToken结构。
+ * 应用程序中每个Activity都对应一个AppWindowToken
  */
 class AppWindowToken extends WindowToken implements WindowManagerService.AppFreezeListener {
     private static final String TAG = TAG_WITH_CLASS_NAME ? "AppWindowToken" : TAG_WM;

@@ -763,9 +763,12 @@ public abstract class Window {
         mAppName = appName;
         mHardwareAccelerated = hardwareAccelerated
                 || SystemProperties.getBoolean(PROPERTY_HARDWARE_UI, false);
+		//得到的是WindowManagerImpl对象
         if (wm == null) {
             wm = (WindowManager)mContext.getSystemService(Context.WINDOW_SERVICE);
         }
+		//又创建一次WindowManagerImpl对象，同时将创建它的Window作为参数传了进来，
+		//这样WindowManagerImpl就持有了Window的引用，可以对Window进行操作
         mWindowManager = ((WindowManagerImpl)wm).createLocalWindowManager(this);
     }
 

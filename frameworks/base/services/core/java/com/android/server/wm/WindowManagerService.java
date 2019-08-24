@@ -400,6 +400,9 @@ public class WindowManagerService extends IWindowManager.Stub
     final boolean mLimitedAlphaCompositing;
     final int mMaxUiWidth;
 
+	//窗口管理策略的接口类，用来定义一个窗口策略所要遵循的通用规范，并提供了WindowManager所有的特定的UI行为。
+	//WindowManager的具体实现类为PhoneWindowManager，这个实现类在WMS创建时被创建。
+	//WMS允许定制窗口层级和特殊窗口类型以及关键的调度和布局。
     final WindowManagerPolicy mPolicy;
 
     final IActivityManager mActivityManager;
@@ -414,6 +417,10 @@ public class WindowManagerService extends IWindowManager.Stub
 
     /**
      * All currently active sessions with clients.
+     *
+     * 目前所有客户端(应用程序进程)持有的有效会话
+     * Session主要用于进程间通信，其他的应用程序进程想要和WMS进行通信就需要经过Session，并且每个应用程序进程都会对应一个Session，
+     * WMS保存这些Session用来记录所有向WMS提出窗口管理服务的客户端。
      */
     final ArraySet<Session> mSessions = new ArraySet<>();
 
@@ -421,12 +428,19 @@ public class WindowManagerService extends IWindowManager.Stub
      * Mapping from an IWindow IBinder to the server's Window object.
      * This is also used as the lock for all of our state.
      * NOTE: Never call into methods that lock ActivityManagerService while holding this object.
+     *
+     * <IBinder,WindowState>
+     * 用于保存窗口的信息，在WMS中它用来描述一个窗口。
+     * 综上得出结论，mWindowMap就是用来保存WMS中各种窗口的集合。
      */
     final WindowHashMap mWindowMap = new WindowHashMap();
 
     /**
      * List of window tokens that have finished starting their application,
      * and now need to have the policy remove their windows.
+     *
+     * 用于存储已经完成启动的应用程序窗口(比如Activity)的AppWindowToken的列表。
+     * 当前需要移除他们窗口(windows)的策略。
      */
     final ArrayList<AppWindowToken> mFinishedStarting = new ArrayList<>();
 
@@ -434,12 +448,16 @@ public class WindowManagerService extends IWindowManager.Stub
      * List of window tokens that have finished drawing their own windows and
      * no longer need to show any saved surfaces. Windows that's still showing
      * saved surfaces will be cleaned up after next animation pass.
+     *
+     * 存储了已经完成窗口绘制并且不需要展示任何已保存surface的应用程序窗口的AppWindowToken。
      */
     final ArrayList<AppWindowToken> mFinishedEarlyAnim = new ArrayList<>();
 
     /**
      * List of app window tokens that are waiting for replacing windows. If the
      * replacement doesn't come in time the stale windows needs to be disposed of.
+     *
+     * 存储了等待更换的应用窗口的AppWindowToken，如果更换不及时，旧窗口旧需要被处理。
      */
     final ArrayList<AppWindowToken> mWindowReplacementTimeouts = new ArrayList<>();
 
@@ -447,11 +465,15 @@ public class WindowManagerService extends IWindowManager.Stub
      * Windows that are being resized.  Used so we can tell the client about
      * the resize after closing the transaction in which we resized the
      * underlying surface.
+     *
+     * 用来存储正在调整大小的窗口的列表。
      */
     final ArrayList<WindowState> mResizingWindows = new ArrayList<>();
 
     /**
      * Windows whose animations have ended and now must be removed.
+     *
+     * 在内存耗尽时设置，存有需要强制删除的窗口。
      */
     final ArrayList<WindowState> mPendingRemove = new ArrayList<>();
 
@@ -462,6 +484,8 @@ public class WindowManagerService extends IWindowManager.Stub
 
     /**
      * Windows whose surface should be destroyed.
+     *
+     * 存有需要被Destroy的Surface。
      */
     final ArrayList<WindowState> mDestroySurface = new ArrayList<>();
 
@@ -469,6 +493,9 @@ public class WindowManagerService extends IWindowManager.Stub
      * Windows with a preserved surface waiting to be destroyed. These windows
      * are going through a surface change. We keep the old surface around until
      * the first frame on the new surface finishes drawing.
+     *
+     * 存有窗口需要保存的等待销毁的Surface。
+     * 为什要保存这些Surface？因为当窗口经历Surface变化时，窗口需要一直保持旧Surface，直到新Surface的第一帧绘制完成。
      */
     final ArrayList<WindowState> mDestroyPreservedSurface = new ArrayList<>();
 
@@ -609,6 +636,7 @@ public class WindowManagerService extends IWindowManager.Stub
 
     boolean mIsTouchDevice;
 
+	//系统的Handler类，用于将任务加入到主线程的消息队列中，这样代码逻辑就会在主线程中执行。
     final H mH = new H();
 
     /**
@@ -708,6 +736,8 @@ public class WindowManagerService extends IWindowManager.Stub
     private float mAnimatorDurationScaleSetting = 1.0f;
     private boolean mAnimationsDisabled = false;
 
+	//InputManagerService会对触摸事件进行处理，它会寻找一个最合适的窗口来处理触摸反馈信息，WMS是窗口的管理者，
+	//因此，WMS"理所应当"地成为了输入系统的中转站，WMS包含了IMS的引用不足为怪。
     final InputManagerService mInputManager;
     final DisplayManagerInternal mDisplayManagerInternal;
     final DisplayManager mDisplayManager;
@@ -735,6 +765,7 @@ public class WindowManagerService extends IWindowManager.Stub
      * is a long initialized to Long.MIN_VALUE so that it doesn't match this value on startup. */
     int mTransactionSequence;
 
+	//用于管理窗口的动画以及特效动画
     final WindowAnimator mAnimator;
 
     final BoundsAnimationController mBoundsAnimationController;
@@ -1170,11 +1201,17 @@ public class WindowManagerService extends IWindowManager.Stub
         return false;
     }
 
+	/**
+	 * @返回值 addWindow的各种状态，比如添加Window成功，无效的display等。
+	 *         这些状态被定义在WindowManagerGlobal中。
+	 */
     public int addWindow(Session session, IWindow client, int seq,
             WindowManager.LayoutParams attrs, int viewVisibility, int displayId,
             Rect outContentInsets, Rect outStableInsets, Rect outOutsets,
             InputChannel outInputChannel) {
         int[] appOp = new int[1];
+		//根据Window的属性检查权限，具体的实现在PhoneWindowManager的checkAddPermission方法中
+		//如果没有执行权限则不会执行后续的代码逻辑
         int res = mPolicy.checkAddPermission(attrs, appOp);
         if (res != WindowManagerGlobal.ADD_OKAY) {
             return res;
@@ -1191,6 +1228,9 @@ public class WindowManagerService extends IWindowManager.Stub
                 throw new IllegalStateException("Display has not been initialialized");
             }
 
+			//通过displayId来获得窗口要添加到那个DisplayContent上，如果没有找到DisplayContent，
+			//则返回WindowManagerGlobal.ADD_INVALID_DISPLA这一状态
+			//DisplayContent用来描述一块屏幕
             final DisplayContent displayContent = mRoot.getDisplayContentOrCreate(displayId);
             if (displayContent == null) {
                 Slog.w(TAG_WM, "Attempted to add window to a display that does not exist: "
@@ -1209,7 +1249,12 @@ public class WindowManagerService extends IWindowManager.Stub
                 return WindowManagerGlobal.ADD_DUPLICATE_ADD;
             }
 
+			//type代表一个窗口的类型，它的数值介于FIRST_SUB_WINDOW和LAST_SUB_WINDOW之间(1000~1999)
+			//这个数值定义在WindowManager中，说明这个窗口是一个子窗口
             if (type >= FIRST_SUB_WINDOW && type <= LAST_SUB_WINDOW) {
+				//attrs.token是IBinder类型的对象，windowForClientLocked方法内部会根据attrs.token作为key
+				//从mWindowMap中得到该子窗口的父窗口，接着对该父窗口进行判断，如果父窗口为null或者type
+				//的取值范围不正确则会返回错误的状态
                 parentWindow = windowForClientLocked(null, attrs.token, false);
                 if (parentWindow == null) {
                     Slog.w(TAG_WM, "Attempted to add window with token that is not a window: "
@@ -1233,6 +1278,10 @@ public class WindowManagerService extends IWindowManager.Stub
             final boolean hasParent = parentWindow != null;
             // Use existing parent window token for child windows since they go in the same token
             // as there parent window so we can apply the same policy on them.
+            // 如果有父窗口就将父窗口的type赋值给rootType，如果没有则将当前窗口的type赋值给rootType
+            // 接下来如果WindowToken为null，则根据rootType或者type的值进行区分判断，如果rootType值等于
+            // TYPE_INPUT_METHOD、TYPE_WALLPAPER等值时，则返回状态值WindowManagerGlobal.ADD_BAD_APP_TOKEN,
+            // 说明rootType值等于TYPE_INPUT_METHOD、TYPE_WALLPAPER等值时是不允许WindowToken为null的
             WindowToken token = displayContent.getWindowToken(
                     hasParent ? parentWindow.mAttrs.token : attrs.token);
             // If this is a child window, we want to apply the same type checking rules as the
@@ -1287,10 +1336,16 @@ public class WindowManagerService extends IWindowManager.Stub
                     }
                 }
                 final IBinder binder = attrs.token != null ? attrs.token : client.asBinder();
+				//隐式创建WindowToken，这说明当我们添加窗口时是可以不向WMS提供WindowToken的，前提是rootType和type的值不为
+				//前面条件判断筛选的值。
+				//WindowToken隐式和显式的创建肯定是要加以区分的，第4个参数为false就代表这个WindowToken是隐式创建的。
+				//接下来的代码逻辑就是WindowToken不为null的情况，根据rootType和type的进行判断
                 token = new WindowToken(this, binder, type, false, displayContent,
                         session.mCanAddInternalSystemWindow);
             } else if (rootType >= FIRST_APPLICATION_WINDOW && rootType <= LAST_APPLICATION_WINDOW) {
-                atoken = token.asAppWindowToken();
+				//进入这个判断说明窗口为应用程序窗口
+				//会将WindowToken转换为专门针对应用程序窗口的AppWindowToken，然后根据AppWindowToken的值进行后续判断
+				atoken = token.asAppWindowToken();
                 if (atoken == null) {
                     Slog.w(TAG_WM, "Attempted to add window with non-application token "
                           + token + ".  Aborting.");
@@ -1354,9 +1409,11 @@ public class WindowManagerService extends IWindowManager.Stub
                         session.mCanAddInternalSystemWindow);
             }
 
+			//创建了WindowState，它存有窗口的所有的状态信息，在WMS中它代表一个窗口
             final WindowState win = new WindowState(this, session, client, token, parentWindow,
                     appOp[0], seq, attrs, viewVisibility, session.mUid,
                     session.mCanAddInternalSystemWindow);
+			//判断请求添加窗口的客户端是否已经死亡
             if (win.mDeathRecipient == null) {
                 // Client has apparently died, so there is no reason to
                 // continue.
@@ -1365,11 +1422,13 @@ public class WindowManagerService extends IWindowManager.Stub
                 return WindowManagerGlobal.ADD_APP_EXITING;
             }
 
+			//窗口的DisplayConent是否为null，如果是则不再执行下面的代码逻辑
             if (win.getDisplayContent() == null) {
                 Slog.w(TAG_WM, "Adding window to Display that has been removed.");
                 return WindowManagerGlobal.ADD_INVALID_DISPLAY;
             }
 
+			//该方法的实现在PhoneWindowManager中，会根据窗口的type对窗口的LayoutParams的一些成员变量进行修改
             mPolicy.adjustWindowParamsLw(win.mAttrs);
             win.setShowToOwnerOnlyLocked(mPolicy.checkShowToOwnerOnly(attrs));
 
@@ -1428,6 +1487,7 @@ public class WindowManagerService extends IWindowManager.Stub
             origId = Binder.clearCallingIdentity();
 
             win.attach();
+			//将WindowState添加到mWindowMap中
             mWindowMap.put(client.asBinder(), win);
             if (win.mAppOp != AppOpsManager.OP_NONE) {
                 int startOpResult = mAppOps.startOpNoThrow(win.mAppOp, win.getOwningUid(),
@@ -1447,6 +1507,8 @@ public class WindowManagerService extends IWindowManager.Stub
 
             boolean imMayMove = true;
 
+			//将WindowState添加到该WindowState对应的WindowToken中(实际是保存在WindowToken的父类WindowContainer中)
+			//这样WindowToken就包含了相同组件的WindowState
             win.mToken.addWindow(win);
             if (type == TYPE_INPUT_METHOD) {
                 win.mGivenInsetsPending = true;

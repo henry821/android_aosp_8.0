@@ -137,6 +137,7 @@ public final class WindowManagerGlobal {
 
     private final Object mLock = new Object();
 
+	//用于存储窗口的view对象
     private final ArrayList<View> mViews = new ArrayList<View>();
     private final ArrayList<ViewRootImpl> mRoots = new ArrayList<ViewRootImpl>();
     private final ArrayList<WindowManager.LayoutParams> mParams =
@@ -288,6 +289,7 @@ public final class WindowManagerGlobal {
         }
 
         final WindowManager.LayoutParams wparams = (WindowManager.LayoutParams) params;
+		//如果当前窗口要作为子窗口，就会根据父窗口对子窗口的WindowManager.LayoutParams类型的wparams对象进行调整
         if (parentWindow != null) {
             parentWindow.adjustLayoutParamsForSubWindow(wparams);
         } else {
