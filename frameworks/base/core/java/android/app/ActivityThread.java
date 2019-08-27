@@ -3708,8 +3708,11 @@ public final class ActivityThread {
                 }
             }
             if (r.window == null && !a.mFinished && willBeVisible) {
+				//获取Activity中的Window对象
                 r.window = r.activity.getWindow();
+				//通过Window对象获取到DecorView
                 View decor = r.window.getDecorView();
+				//DecorView此时对用户不可见
                 decor.setVisibility(View.INVISIBLE);
                 ViewManager wm = a.getWindowManager();
                 WindowManager.LayoutParams l = r.window.getAttributes();
@@ -3728,6 +3731,7 @@ public final class ActivityThread {
                         impl.notifyChildRebuilt();
                     }
                 }
+				//DecorView被添加进WindowManager
                 if (a.mVisibleFromClient) {
                     if (!a.mWindowAdded) {
                         a.mWindowAdded = true;
@@ -3782,6 +3786,7 @@ public final class ActivityThread {
                 r.activity.mVisibleFromServer = true;
                 mNumVisibleActivities++;
                 if (r.activity.mVisibleFromClient) {
+					//设置DecorView对用户可见
                     r.activity.makeVisible();
                 }
             }

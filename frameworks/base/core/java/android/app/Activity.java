@@ -2651,6 +2651,7 @@ public class Activity extends ContextThemeWrapper
      * @see #setContentView(android.view.View, android.view.ViewGroup.LayoutParams)
      */
     public void setContentView(@LayoutRes int layoutResID) {
+    	//调用mWindow对象(即PhoneWindow)的setContentView方法
         getWindow().setContentView(layoutResID);
         initWindowDecorActionBar();
     }
@@ -5406,6 +5407,7 @@ public class Activity extends ContextThemeWrapper
     void makeVisible() {
         if (!mWindowAdded) {
             ViewManager wm = getWindowManager();
+			//将DecorView添加进WindowManager(实际是WindowManagerImpl)
             wm.addView(mDecor, getWindow().getAttributes());
             mWindowAdded = true;
         }
@@ -6910,7 +6912,9 @@ public class Activity extends ContextThemeWrapper
 
         mFragments.attachHost(null /*parent*/);
 
+		//创建一个Window对象(即PhoneWindow实例)。Window类 = 抽象类，其唯一实现类 = PhoneWindow
         mWindow = new PhoneWindow(this, window, activityConfigCallback);
+		//设置回调，向Activity分发点击或状态改变等事件
         mWindow.setWindowControllerCallback(this);
         mWindow.setCallback(this);
         mWindow.setOnWindowDismissedCallback(this);
@@ -6945,7 +6949,7 @@ public class Activity extends ContextThemeWrapper
             }
         }
 
-		//这个方法的具体实现在PhoneWindow的父类Window中
+		//为Window实例对象设置WindowManager对象，这个方法的具体实现在PhoneWindow的父类Window中
         mWindow.setWindowManager(
                 (WindowManager)context.getSystemService(Context.WINDOW_SERVICE),
                 mToken, mComponent.flattenToString(),
