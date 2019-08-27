@@ -70,6 +70,19 @@ import java.util.function.Supplier;
  *
  * @author  Josh Bloch and Doug Lea
  * @since   1.2
+ *
+ * 1. ThreadLocal实例 = 类中的private、static字段
+ * 2. 只需实例化对象一次 & 无需知道它是被哪个线程实例化
+ * 3. 每个线程都保持 对其线程局部变量副本 的隐式引用
+ * 4. 线程消失后，其线程局部实例的所有副本都会被垃圾回收(除非存在对这些副本的其他引用)
+ * 5. 虽然所有的线程都能访问到这个ThreadLocal实例，但是每个线程只能访问到自己通过调用ThreadLocal的set()设置的值
+ *    即 哪怕两个不同的线程在同一个"ThreadLocal对象"上设置了不同的值，他们仍然无法访问到对方的值
+ *
+ * ThreadLocal如何做到线程安全：
+ * 1.每个线程用有自己独立的ThreadLocals变量(指向ThreadLocalMap对象)
+ * 2.每当线程访问ThreadLocals变量时，访问的都是各自线程自己的ThreadLocalMap变量
+ * 3.ThreadLocal变量的键key是唯一的：当前ThreadLocal实例
+ * 上述3点保证了线程间的数据访问隔离，即线程安全
  */
 public class ThreadLocal<T> {
     /**
@@ -155,18 +168,26 @@ public class ThreadLocal<T> {
      * by an invocation of the {@link #initialValue} method.
      *
      * @return the current thread's value of this thread-local
+     *
+     * 获取hreadLocal变量里的值
+     * 由于ThreadLocal变量引用 指向 ThreadLocalMap对象，即获取ThreadLocalMap对象的值 = 该线程设置的存储在ThreadLocal变量的值
      */
     public T get() {
+    	//获取当前线程
         Thread t = Thread.currentThread();
+		//获取该线程的ThreadLocalMap对象
         ThreadLocalMap map = getMap(t);
+		//若该线程的ThreadLocalMap对象已存在，则直接获取该Map里的值；否则通过初始化函数创建一个ThreadLocalMap对象
         if (map != null) {
             ThreadLocalMap.Entry e = map.getEntry(this);
             if (e != null) {
+				//直接获取值
                 @SuppressWarnings("unchecked")
                 T result = (T)e.value;
                 return result;
             }
         }
+		//初始化
         return setInitialValue();
     }
 
@@ -178,8 +199,11 @@ public class ThreadLocal<T> {
      */
     private T setInitialValue() {
         T value = initialValue();
+		//获得当前线程
         Thread t = Thread.currentThread();
+		//获取该线程的ThreadLocalMap对象
         ThreadLocalMap map = getMap(t);
+		//若该线程的ThreadLocalMap对象已存在，则直接替换该值，否则创建ThreadLocalMap对象
         if (map != null)
             map.set(this, value);
         else
@@ -195,10 +219,18 @@ public class ThreadLocal<T> {
      *
      * @param value the value to be stored in the current thread's copy of
      *        this thread-local.
+     *
+     * 设置ThreadLocal变量引用的值
+     * ThreadLocal变量引用 指向 ThreadLocalMap对象，即设置ThreadLocalMap的值 = 该线程设置的存储在ThreadLocal变量的值
+     * ThreadLocalMap的键key = 当前ThreadLocal实例
+     * ThreadLocalMap的值value = 该线程设置的存储在ThreadLocal变量的值
      */
     public void set(T value) {
+    	//获取当前线程
         Thread t = Thread.currentThread();
+		//获取该线程的ThreadLocalMap对象
         ThreadLocalMap map = getMap(t);
+		//若该线程的ThreadLocalMap对象已存在，则替换该map里的值，否则创建一个ThreadLocalMap对象
         if (map != null)
             map.set(this, value);
         else
@@ -228,6 +260,8 @@ public class ThreadLocal<T> {
      *
      * @param  t the current thread
      * @return the map
+     *
+     * 获取当前线程的threadLocals变量引用
      */
     ThreadLocalMap getMap(Thread t) {
         return t.threadLocals;
@@ -239,8 +273,11 @@ public class ThreadLocal<T> {
      *
      * @param t the current thread
      * @param firstValue value for the initial entry of the map
+     *
+     * 创建当前线程的ThreadLocalMap对象
      */
     void createMap(Thread t, T firstValue) {
+    	//新创建一个ThreadLocalMap对象，放入到Thread类的threadLocals变量引用中
         t.threadLocals = new ThreadLocalMap(this, firstValue);
     }
 
@@ -294,6 +331,9 @@ public class ThreadLocal<T> {
      * WeakReferences for keys. However, since reference queues are not
      * used, stale entries are guaranteed to be removed only when
      * the table starts running out of space.
+     *
+     * 键key：当前ThreadLocal实例
+     * 值value：该线程设置的存储在ThreadLocal变量的值
      */
     static class ThreadLocalMap {
 
