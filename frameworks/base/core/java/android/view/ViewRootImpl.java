@@ -719,6 +719,7 @@ public final class ViewRootImpl implements ViewParent,
                 // Schedule the first layout -before- adding to the window
                 // manager, to make sure we do the relayout before receiving
                 // any other events from the system.
+                // 安排添加进WindowManager前的第一次layout过程，为了确保接收到系统其它事件后进行relayout过程
                 requestLayout();
                 if ((mWindowAttributes.inputFeatures
                         & WindowManager.LayoutParams.INPUT_FEATURE_NO_INPUT_CHANNEL) == 0) {
@@ -1164,6 +1165,7 @@ public final class ViewRootImpl implements ViewParent,
     @Override
     public void requestLayout() {
         if (!mHandlingLayoutInLayoutRequest) {
+			//检查是否在主线程
             checkThread();
             mLayoutRequested = true;
             scheduleTraversals();
@@ -1367,6 +1369,8 @@ public final class ViewRootImpl implements ViewParent,
         if (!mTraversalScheduled) {
             mTraversalScheduled = true;
             mTraversalBarrier = mHandler.getLooper().getQueue().postSyncBarrier();
+			//通过mHandler.post()发送一个runnable，在run()方法中去处理绘制流程
+			//与ActivityThread的Handler消息传递机制相似
             mChoreographer.postCallback(
                     Choreographer.CALLBACK_TRAVERSAL, mTraversalRunnable, null);
             if (!mUnbufferedInputDispatch) {
@@ -1395,6 +1399,7 @@ public final class ViewRootImpl implements ViewParent,
                 Debug.startMethodTracing("ViewAncestor");
             }
 
+			//在此方法中开始View绘制的3大流程：Measure、Layout、Draw
             performTraversals();
 
             if (mProfile) {
@@ -1760,6 +1765,7 @@ public final class ViewRootImpl implements ViewParent,
             }
 
             // Ask host how big it wants to be
+            // 执行measure流程，内部会调用performMeasure()
             windowSizeMayChange |= measureHierarchy(host, lp, res,
                     desiredWindowWidth, desiredWindowHeight);
         }
@@ -2209,6 +2215,7 @@ public final class ViewRootImpl implements ViewParent,
         boolean triggerGlobalLayoutListener = didLayout
                 || mAttachInfo.mRecomputeGlobalAttributes;
         if (didLayout) {
+			//执行layout流程
             performLayout(lp, mWidth, mHeight);
 
             // By this point all views have been sized and positioned
@@ -2356,6 +2363,7 @@ public final class ViewRootImpl implements ViewParent,
                 mPendingTransitions.clear();
             }
 
+			//执行draw流程
             performDraw();
         } else {
             if (isViewVisible) {
@@ -6739,6 +6747,10 @@ public final class ViewRootImpl implements ViewParent,
         }
     }
 
+	/**
+	 * Runnable类的子类对象mTraversalRunnable
+	 * 作用：在run()方法中去处理绘制流程
+	 */
     final class TraversalRunnable implements Runnable {
         @Override
         public void run() {
@@ -7438,6 +7450,10 @@ public final class ViewRootImpl implements ViewParent,
         }
     }
 
+	/**
+ 	 * 是Binder的Native端，用于接收WMS处理操作
+ 	 * 因W类的接收方法是在线程池中的，故可通过Handler将事件处理切换到主线程中
+	 */
     static class W extends IWindow.Stub {
         private final WeakReference<ViewRootImpl> mViewAncestor;
         private final IWindowSession mWindowSession;

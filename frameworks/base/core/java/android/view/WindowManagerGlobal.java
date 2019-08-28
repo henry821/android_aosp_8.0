@@ -345,6 +345,7 @@ public final class WindowManagerGlobal {
                 }
             }
 
+			//实例化一个ViewRootImpl对象
             root = new ViewRootImpl(view.getContext(), display);
 
             view.setLayoutParams(wparams);
@@ -355,6 +356,7 @@ public final class WindowManagerGlobal {
 
             // do this last because it fires off messages to start doing things
             try {
+				//WindowManager将DecorView实例对象交给iewRootImpl来绘制View
                 root.setView(view, wparams, panelParentView);
             } catch (RuntimeException e) {
                 // BadTokenException or InvalidDisplayException, clean up.
