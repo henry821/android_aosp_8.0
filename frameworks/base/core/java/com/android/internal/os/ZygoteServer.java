@@ -161,6 +161,7 @@ class ZygoteServer {
                     peers.add(newPeer);
                     fds.add(newPeer.getFileDesciptor());
                 } else {
+					// 当有ActivityManagerService的请求数据到来时会调用此处代码
                     boolean done = peers.get(i).runOnce(this);
                     if (done) {
                         peers.remove(i);

@@ -249,6 +249,11 @@ public class ZygoteProcess {
      * replaces newlines in the argument list with spaces.
      *
      * @throws ZygoteStartFailedEx if process start failed for any reason
+     *
+     * 将参数列表发送至zygote进程，zygote进程会启动一个子进程并返回一个子进程id(pid)
+     * 请注意：当前实现方式将参数列表中的换行用空格代替
+     *
+     * @抛出异常 ZygoteStartFailedEx 如果进程启动失败(无论何种原因)会抛出异常
      */
     @GuardedBy("mLock")
     private static Process.ProcessStartResult zygoteSendArgsAndGetResult(
@@ -339,6 +344,7 @@ public class ZygoteProcess {
                                                       String invokeWith,
                                                       String[] extraArgs)
                                                       throws ZygoteStartFailedEx {
+        // 创建了字符串列表argsForZygote，并将启动应用进程的启动参数保存在argsForZygote中
         ArrayList<String> argsForZygote = new ArrayList<String>();
 
         // --runtime-args, --setuid=, --setgid=,
@@ -457,17 +463,23 @@ public class ZygoteProcess {
 
         if (primaryZygoteState == null || primaryZygoteState.isClosed()) {
             try {
+				// 调用ZygoteState的connect函数与名称为ZYGOTE_SOCKET(值为"zygote")的socket建立连接
                 primaryZygoteState = ZygoteState.connect(mSocket);
             } catch (IOException ioe) {
                 throw new ZygoteStartFailedEx("Error connecting to primary zygote", ioe);
             }
         }
 
+		// 如果连接name为"zygote"的socket返回的primaryZygoteState与当前的abi匹配，则返回primaryZygoteState
         if (primaryZygoteState.matches(abi)) {
             return primaryZygoteState;
         }
 
         // The primary zygote didn't match. Try the secondary.
+        // 如果primaryZygoteState与abi不匹配，则连接name为"zygote_secondary"的socket
+        // 两个socket的区别：
+        // name为"zygote"的socket是运行在64位zygote进程中的，而name为"zygote_secondary"的socket则运行在32位zygote进程中
+        // 既然应用程序进程是通过zygote进程fork产生的，当要连接zygote中的socket时，也需要保证位数的一致
         if (secondaryZygoteState == null || secondaryZygoteState.isClosed()) {
             try {
                 secondaryZygoteState = ZygoteState.connect(mSecondarySocket);

@@ -138,6 +138,7 @@ class ZygoteConnection {
         FileDescriptor[] descriptors;
 
         try {
+			// 获取应用程序进程的启动参数
             args = readArgumentList();
             descriptors = mSocket.getAncillaryFileDescriptors();
         } catch (IOException ex) {
@@ -165,6 +166,7 @@ class ZygoteConnection {
         FileDescriptor serverPipeFd = null;
 
         try {
+			// 将readArgumentList函数返回的字符串封装到Arguments对象parsedArgs中
             parsedArgs = new Arguments(args);
 
             if (parsedArgs.abiListQuery) {
@@ -236,6 +238,8 @@ class ZygoteConnection {
 
             fd = null;
 
+			// 创建应用程序进程，参数为parsedArgs中存储的应用进程启动参数，返回值为pid
+			// forkAndSpecialize函数主要是通过fork当前进程来创建一个子进程
             pid = Zygote.forkAndSpecialize(parsedArgs.uid, parsedArgs.gid, parsedArgs.gids,
                     parsedArgs.debugFlags, rlimits, parsedArgs.mountExternal, parsedArgs.seInfo,
                     parsedArgs.niceName, fdsToClose, fdsToIgnore, parsedArgs.instructionSet,
@@ -249,6 +253,8 @@ class ZygoteConnection {
                     "Zygote security policy prevents request: ", ex);
         }
 
+		// 如果pid为0，则说明是在新创建的子进程中执行的
+		// 就会调用handleChildProc函数来启动这个子进程也就是应用程序进程
         try {
             if (pid == 0) {
                 // in child

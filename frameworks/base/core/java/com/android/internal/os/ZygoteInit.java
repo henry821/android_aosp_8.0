@@ -719,6 +719,7 @@ public class ZygoteInit {
                 throw new RuntimeException("No ABI list supplied.");
             }
 
+			// 注册zygote用的socket
             zygoteServer.registerServerSocket(socketName);
             // In some configurations, we avoid preloading resources and classes eagerly.
             // In such cases, we will preload things prior to our first fork.
@@ -726,6 +727,7 @@ public class ZygoteInit {
                 bootTimingsTraceLog.traceBegin("ZygotePreload");
                 EventLog.writeEvent(LOG_BOOT_PROGRESS_PRELOAD_START,
                     SystemClock.uptimeMillis());
+				// 预加载类和资源
                 preload(bootTimingsTraceLog);
                 EventLog.writeEvent(LOG_BOOT_PROGRESS_PRELOAD_END,
                     SystemClock.uptimeMillis());
@@ -756,10 +758,12 @@ public class ZygoteInit {
             ZygoteHooks.stopZygoteNoThreadCreation();
 
             if (startSystemServer) {
+				// 启动SystemServer进程
                 startSystemServer(abiList, socketName, zygoteServer);
             }
 
             Log.i(TAG, "Accepting command socket connections");
+			// 等待客户端请求
             zygoteServer.runSelectLoop(abiList);
 
             zygoteServer.closeServerSocket();
@@ -836,6 +840,7 @@ public class ZygoteInit {
         RuntimeInit.redirectLogStreams();
 
         RuntimeInit.commonInit();
+		// 在新创建的应用程序进程中创建Binder线程池
         ZygoteInit.nativeZygoteInit();
         RuntimeInit.applicationInit(targetSdkVersion, argv, classLoader);
     }
