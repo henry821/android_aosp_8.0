@@ -6527,8 +6527,10 @@ public final class ActivityThread {
 
         Process.setArgV0("<pre-initialized>");
 
+		// 在当前应用程序进程中创建消息循环
         Looper.prepareMainLooper();
 
+		// 创建ActivityThread
         ActivityThread thread = new ActivityThread();
         thread.attach(false);
 
@@ -6543,6 +6545,7 @@ public final class ActivityThread {
 
         // End of event ActivityThreadMain.
         Trace.traceEnd(Trace.TRACE_TAG_ACTIVITY_MANAGER);
+		// 调用Looper.loop，使得Looper开始工作，开始处理消息
         Looper.loop();
 
         throw new RuntimeException("Main thread loop unexpectedly exited");
