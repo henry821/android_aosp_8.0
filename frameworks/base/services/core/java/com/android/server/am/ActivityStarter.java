@@ -135,6 +135,9 @@ import java.util.Date;
  *
  * This class collects all the logic for determining how an intent and flags should be turned into
  * an activity and associated task and stack.
+ *
+ * Android7.0新加入的类，它是加载Activity的控制类，会收集所有的逻辑来决定如果将Intent和Flags转换为Activity，
+ * 并将Activity和Task以及Stack相关联
  */
 class ActivityStarter {
     private static final String TAG = TAG_WITH_CLASS_NAME ? "ActivityStarter" : TAG_AM;
@@ -262,6 +265,7 @@ class ActivityStarter {
             ActivityRecord[] outActivity, ActivityStackSupervisor.ActivityContainer container,
             TaskRecord inTask, String reason) {
 
+		// 判断启动的理由不为空，如果为空则抛出异常
         if (TextUtils.isEmpty(reason)) {
             throw new IllegalArgumentException("Need to specify a reason.");
         }
@@ -297,9 +301,12 @@ class ActivityStarter {
                 = options != null ? options.popAppVerificationBundle() : null;
 
         ProcessRecord callerApp = null;
+		// 判断IApplicationThread类型的caller是否为null，这个caller是方法调用一路传过来的，指向的是Launcher进程的ApplicationThread对象
         if (caller != null) {
+			// 获取Launcher进程，它是ProcessRecord类型的，ProcessRecord英语描述一个应用程序进程
             callerApp = mService.getRecordForAppLocked(caller);
             if (callerApp != null) {
+				// 获取Launcher进程的pid和uid并赋值
                 callingPid = callerApp.pid;
                 callingUid = callerApp.info.uid;
             } else {
@@ -524,11 +531,13 @@ class ActivityStarter {
             aInfo = mSupervisor.resolveActivity(intent, rInfo, startFlags, null /*profilerInfo*/);
         }
 
+		// 创建即将要启动的Activity的描述类ActivityRecord，ActivityRecord用于描述一个Activity，记录一个Activity的所有信息
         ActivityRecord r = new ActivityRecord(mService, callerApp, callingPid, callingUid,
                 callingPackage, intent, resolvedType, aInfo, mService.getGlobalConfiguration(),
                 resultRecord, resultWho, requestCode, componentSpecified, voiceSession != null,
                 mSupervisor, container, options, sourceRecord);
         if (outActivity != null) {
+			// 将创建的ActivityRecord赋值给ActivityRecord[]类型的outActivity
             outActivity[0] = r;
         }
 
@@ -665,6 +674,10 @@ class ActivityStarter {
         mService.mContext.startActivityAsUser(intent, options.toBundle(), UserHandle.CURRENT);
     }
 
+	/**
+	 * @参数 inTask(倒数第二个) 代表启动的Activity所在的栈
+	 * @参数 reason(倒数第一个) 代表启动的理由
+	 */
     final int startActivityMayWait(IApplicationThread caller, int callingUid,
             String callingPackage, Intent intent, String resolvedType,
             IVoiceInteractionSession voiceSession, IVoiceInteractor voiceInteractor,
@@ -1019,6 +1032,7 @@ class ActivityStarter {
     }
 
     // Note: This method should only be called from {@link startActivity}.
+    // 这个方法主要处理栈管理相关的逻辑
     private int startActivityUnchecked(final ActivityRecord r, ActivityRecord sourceRecord,
             IVoiceInteractionSession voiceSession, IVoiceInteractor voiceInteractor,
             int startFlags, boolean doResume, ActivityOptions options, TaskRecord inTask,
@@ -1181,9 +1195,12 @@ class ActivityStarter {
 
         // Should this be considered a new task?
         int result = START_SUCCESS;
+		// 当启动根Activity时会将Itent的Flag设置为FLAG_ACTIVITY_NEW_TASK，这样就会满足此处条件
         if (mStartActivity.resultTo == null && mInTask == null && !mAddingToTask
                 && (mLaunchFlags & FLAG_ACTIVITY_NEW_TASK) != 0) {
             newTask = true;
+			// 创建新的TaskRecord，TaskRecord用来描述一个Activity任务栈，也就是说此方法内部会创建一个新的Activity任务栈
+			// Activity任务栈其实是一个假想的模型，并不真实存在
             result = setTaskFromReuseOrCreateNewTask(
                     taskToAffiliate, preferredLaunchStackId, topStack);
         } else if (mSourceRecord != null) {

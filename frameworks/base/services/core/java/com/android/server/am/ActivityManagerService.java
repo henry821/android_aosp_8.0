@@ -4466,6 +4466,8 @@ public class ActivityManagerService extends IActivityManager.Stub
     public final int startActivity(IApplicationThread caller, String callingPackage,
             Intent intent, String resolvedType, IBinder resultTo, String resultWho, int requestCode,
             int startFlags, ProfilerInfo profilerInfo, Bundle bOptions) {
+        // startActivityAsUser方法比startActivity方法多了一个参数UserHandle.getCallingUserId()，
+        // 这个方法会获得调用者的UserId,AMS会根据这个UserId来确定调用者的权限
         return startActivityAsUser(caller, callingPackage, intent, resolvedType, resultTo,
                 resultWho, requestCode, startFlags, profilerInfo, bOptions,
                 UserHandle.getCallingUserId());
@@ -4495,7 +4497,9 @@ public class ActivityManagerService extends IActivityManager.Stub
     public final int startActivityAsUser(IApplicationThread caller, String callingPackage,
             Intent intent, String resolvedType, IBinder resultTo, String resultWho, int requestCode,
             int startFlags, ProfilerInfo profilerInfo, Bundle bOptions, int userId) {
+        // 判断调用者进程是否被隔离，如果被隔离则抛出SecurityException异常
         enforceNotIsolatedCaller("startActivity");
+		// 检查调用者是否有权限，如果没有权限也会抛出SecurityException异常
         userId = mUserController.handleIncomingUser(Binder.getCallingPid(), Binder.getCallingUid(),
                 userId, false, ALLOW_FULL_ONLY, "startActivity", null);
         // TODO: Switch to user app stacks here.

@@ -4464,11 +4464,32 @@ public class Activity extends ContextThemeWrapper
      * @throws android.content.ActivityNotFoundException
      *
      * @see #startActivity
+     *
+     * 启动一个你希望在它结束时得到结果的Activity。
+     * 当这个Activity退出时，onActivityResult会连带着给定的请求码(requestCode)被调用
+     * 使用一个负数的请求码相当于使用startActivity方法(这个Activity不被当做子Activity启动)
+     *
+     * 注意这个方法只能与被规定需要返回结果的Intent协议配合使用。使用其他的协议(例如Intent#ACTION_MAIN或者Intent#ACTION_VIEW)，你可能得不到期望的结果。
+     * 例如：如果你启动的Activity使用了Intent#FLAG_ACTIVITY_NEW_TASK标志，它不会运行在你的任务栈中，因此你会立刻收到一个取消的结果。
+     *
+     * 一个特殊情况：如果你在onCreate或onResume方法中使用大于等于0的请求码调用startActivityForResult方法，窗口会直到被启动的Activity返回结果后才显示出来
+     * 这是为了避免在重定向到另一个Activity时出现可见的闪烁。
+     *
+     * 当没有找到Intent对应的Activity时会抛出ActivityNotFoundException异常
+     *
+     * @参数 intent 启动的intent
+     * @参数 requestCode 如果大于等于0，当activity存在时会在onActivityResult方法中返回
+     * @参数 options 说明Activity应该被如何启动的附加选项
+     *
+     * @异常 Activity未找到
      */
     public void startActivityForResult(@RequiresPermission Intent intent, int requestCode,
             @Nullable Bundle options) {
+        // mParent是Activity类型的，表示当前Activity的父类。
+        // 如果是从Launcher启动的，因为根Activity还没有创建出来，所以mParent == null
         if (mParent == null) {
             options = transferSpringboardActivityOptions(options);
+			// Instrumentation主要用来监控应用程序和系统的交互
             Instrumentation.ActivityResult ar =
                 mInstrumentation.execStartActivity(
                     this, mMainThread.getApplicationThread(), mToken, this,

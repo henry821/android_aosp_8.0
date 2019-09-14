@@ -1464,6 +1464,10 @@ public class ActivityStackSupervisor extends ConfigurationContainer implements D
                     mService.getGlobalConfiguration(), r.getMergedOverrideConfiguration());
             r.setLastReportedConfiguration(mergedConfiguration);
 
+			// 这里的app.thread指的是IApplicationThread，他的实现是ActivityThread的内部类ApplicationThread，其中ApplicationThread继承了IApplicationThread.Stub
+			// app指的是传入的要启动的Activity所在的应用程序进程，因此，此处代码指的就是要在目标应用程序进程启动Activity
+			// 当前代码逻辑运行在AMS所在的进程(SystemServer进程)，通过ApplicationThread来与应用程序进程进行Binder通信
+			// 换句话说，ApplicationThread是AMS所在进程(SystemServer进程)和应用程序进程的通信桥梁
             app.thread.scheduleLaunchActivity(new Intent(r.intent), r.appToken,
                     System.identityHashCode(r), r.info,
                     // TODO: Have this take the merged configuration instead of separate global and
@@ -1552,11 +1556,14 @@ public class ActivityStackSupervisor extends ConfigurationContainer implements D
     void startSpecificActivityLocked(ActivityRecord r,
             boolean andResume, boolean checkConfig) {
         // Is this activity's application already running?
+        // 获取即将要启动的Activity所在的应用程序进程
         ProcessRecord app = mService.getProcessRecordLocked(r.processName,
                 r.info.applicationInfo.uid, true);
 
         r.getStack().setLaunchTime(r);
 
+		// 如果要启动的Activity所在的应用程序进程已经运行的话，则进入方法体
+		// 调用realStartActivityLocked方法，注意传入的第二个参数是代表要启动的Activity所在的应用程序进程的ProcessRecord
         if (app != null && app.thread != null) {
             try {
                 if ((r.info.flags&ActivityInfo.FLAG_MULTIPROCESS) == 0
@@ -2061,6 +2068,7 @@ public class ActivityStackSupervisor extends ConfigurationContainer implements D
         if (targetStack != null && isFocusedStack(targetStack)) {
             return targetStack.resumeTopActivityUncheckedLocked(target, targetOptions);
         }
+		// 获取要启动的Activity所在栈的栈顶的不是处于停止状态的ActivityRecord
         final ActivityRecord r = mFocusedStack.topRunningActivityLocked();
         if (r == null || r.state != RESUMED) {
             mFocusedStack.resumeTopActivityUncheckedLocked(null, null);
