@@ -7005,6 +7005,7 @@ public class Activity extends ContextThemeWrapper
 
     final void performCreate(Bundle icicle, PersistableBundle persistentState) {
         restoreHasCurrentPermissionRequest(icicle);
+		// 调用Activity的onCreate方法
         onCreate(icicle, persistentState);
         mActivityTransitionState.readState(icicle);
         performCreateCommon();
