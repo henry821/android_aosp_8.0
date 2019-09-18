@@ -120,6 +120,8 @@ public final class Message implements Parcelable {
     /**
      * Return a new Message instance from the global pool. Allows us to
      * avoid allocating new objects in many cases.
+     *
+     * 从公共Message池中返回新的Message实例。大多数情况下能够避免创建新的对象
      */
     public static Message obtain() {
         synchronized (sPoolSync) {

@@ -85,15 +85,24 @@ public final class Looper {
       * this looper, before actually starting the loop. Be sure to call
       * {@link #loop()} after calling this method, and end it by calling
       * {@link #quit()}.
+      *
+      * 初始化当前线程，使其作为一个Looper
+      * 这样给了你一个机会在当前Looper实际开始loop前，去创建引用到当前Looper的Handler(可以多个)
+      * 确保在调用这个方法后调用loop()方法，并通过调用quit()方法去结束
       */
     public static void prepare() {
         prepare(true);
     }
 
     private static void prepare(boolean quitAllowed) {
+    	// 判断sThreadLocal是否为null，否则抛出异常
+    	// 即：Looper.prepare()方法不能被调用两次，1个线程中只能对应1个Looper实例
+    	// 注：sThreadLocal = 1个ThreadLocal对象，用于存储线程的变量
         if (sThreadLocal.get() != null) {
             throw new RuntimeException("Only one Looper may be created per thread");
         }
+		// 若为初次调用Looper.prepare()，则创建Looper对象 & 存放在ThreadLocal变量中
+		// Looper对象是存放在Thread线程里的
         sThreadLocal.set(new Looper(quitAllowed));
     }
 
@@ -102,6 +111,13 @@ public final class Looper {
      * application's main looper. The main looper for your application
      * is created by the Android environment, so you should never need
      * to call this function yourself.  See also: {@link #prepare()}
+     *
+     * 初始化当前线程，使其作为一个Looper，并标记为当前应用的主Looper
+     * 你的应用的主Looper由Android环境创建，所以你不需要亲自调用这个方法
+     *
+     * 在Android应用进程启动时，会默认创建1个主线程(ActivityThread，也叫UI线程)
+     * 创建ActivityThread时，会调用其静态的main()方法 = 应用程序的入口
+     * main()方法内部则会调用Looper.prepareMainLooper()为主线程生成1个Looper对象
      */
     public static void prepareMainLooper() {
         prepare(false);
@@ -125,12 +141,16 @@ public final class Looper {
     /**
      * Run the message queue in this thread. Be sure to call
      * {@link #quit()} to end the loop.
+     *
+     * 运行当前线程的消息队列。确认在结束轮训消息队列是调用quit()方法
      */
     public static void loop() {
+    	// 获取当前线程的Looper，如果未获取到则抛出异常
         final Looper me = myLooper();
         if (me == null) {
             throw new RuntimeException("No Looper; Looper.prepare() wasn't called on this thread.");
         }
+		// 获取消息队列对象
         final MessageQueue queue = me.mQueue;
 
         // Make sure the identity of this thread is that of the local process,
@@ -139,6 +159,7 @@ public final class Looper {
         final long ident = Binder.clearCallingIdentity();
 
         for (;;) {
+			// 从消息队列中取出消息，若取出的消息为空，则会阻塞线程
             Message msg = queue.next(); // might block
             if (msg == null) {
                 // No message indicates that the message queue is quitting.
@@ -161,6 +182,7 @@ public final class Looper {
             final long start = (slowDispatchThresholdMs == 0) ? 0 : SystemClock.uptimeMillis();
             final long end;
             try {
+				// 把消息Message派发给消息对象msg的target属性，target实际是一个Handler对象
                 msg.target.dispatchMessage(msg);
                 end = (slowDispatchThresholdMs == 0) ? 0 : SystemClock.uptimeMillis();
             } finally {
@@ -192,6 +214,7 @@ public final class Looper {
                         + msg.callback + " what=" + msg.what);
             }
 
+			// 释放消息占据的资源
             msg.recycleUnchecked();
         }
     }
@@ -199,6 +222,8 @@ public final class Looper {
     /**
      * Return the Looper object associated with the current thread.  Returns
      * null if the calling thread is not associated with a Looper.
+     *
+     * 返回关联当前线程的Looper对象。如果调用的线程没有关联Looper则返回null
      */
     public static @Nullable Looper myLooper() {
         return sThreadLocal.get();
@@ -214,6 +239,8 @@ public final class Looper {
     }
 
     private Looper(boolean quitAllowed) {
+    	// 创建1个消息队列对象(MessageQueue)
+    	// 即：当创建1个Looper实例时，会自动创建一个与之匹配的消息队列对象(MessageQueue)
         mQueue = new MessageQueue(quitAllowed);
         mThread = Thread.currentThread();
     }

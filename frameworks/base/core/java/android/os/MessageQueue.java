@@ -306,6 +306,9 @@ public final class MessageQueue {
         return newWatchedEvents;
     }
 
+	/**
+	 * 作用：出队消息，即从消息队列中移除该消息
+	 */
     Message next() {
         // Return here if the message loop has already quit and been disposed.
         // This can happen if the application tries to restart a looper after quit
@@ -316,12 +319,15 @@ public final class MessageQueue {
         }
 
         int pendingIdleHandlerCount = -1; // -1 only during first iteration
+        // 该参数用于确定消息队列中是否还有消息
+        // 从而决定消息队列应处于出队消息状态 or 等待状态
         int nextPollTimeoutMillis = 0;
         for (;;) {
             if (nextPollTimeoutMillis != 0) {
                 Binder.flushPendingCommands();
             }
 
+			// 此方法在native层，若是nextPollTimeoutMillis为-1，此时消息队列处于等待状态
             nativePollOnce(ptr, nextPollTimeoutMillis);
 
             synchronized (this) {
@@ -329,6 +335,7 @@ public final class MessageQueue {
                 final long now = SystemClock.uptimeMillis();
                 Message prevMsg = null;
                 Message msg = mMessages;
+				// 出队消息，即 从消息队列中取出消息：按创建Message对象的时间顺序
                 if (msg != null && msg.target == null) {
                     // Stalled by a barrier.  Find the next asynchronous message in the queue.
                     do {
@@ -341,7 +348,7 @@ public final class MessageQueue {
                         // Next message is not ready.  Set a timeout to wake up when it is ready.
                         nextPollTimeoutMillis = (int) Math.min(msg.when - now, Integer.MAX_VALUE);
                     } else {
-                        // Got a message.
+                        // Got a message. 取出了消息
                         mBlocked = false;
                         if (prevMsg != null) {
                             prevMsg.next = msg.next;
@@ -355,6 +362,8 @@ public final class MessageQueue {
                     }
                 } else {
                     // No more messages.
+                    // 若消息队列中已无消息，则将nextPollTimeoutMillis参数设为-1
+                    // 下次循环时，消息队列处于等待状态
                     nextPollTimeoutMillis = -1;
                 }
 
@@ -532,6 +541,10 @@ public final class MessageQueue {
         }
     }
 
+	/**
+	 * 作用：入队，即将消息根据需要执行的时间点放入到消息队列中
+	 * 采用单链表实现：提高插入消息、删除消息的效率
+	 */
     boolean enqueueMessage(Message msg, long when) {
         if (msg.target == null) {
             throw new IllegalArgumentException("Message must have a target.");
@@ -553,8 +566,10 @@ public final class MessageQueue {
             msg.when = when;
             Message p = mMessages;
             boolean needWake;
+			// 判断消息队列里是否有消息(mMessages链表头结点是否为空)
             if (p == null || when == 0 || when < p.when) {
                 // New head, wake up the event queue if blocked.
+                // 如果消息队列里没有消息(mMessages链表头结点为空)，则将当前插入的消息作为链表头结点，若此时消息队列处于等待状态，则唤醒
                 msg.next = p;
                 mMessages = msg;
                 needWake = mBlocked;
@@ -564,16 +579,21 @@ public final class MessageQueue {
                 // and the message is the earliest asynchronous message in the queue.
                 needWake = mBlocked && p.target == null && msg.isAsynchronous();
                 Message prev;
+				// 若消息队列里有消息，则根据消息需要执行的时间点插入到消息队列(链表)中
                 for (;;) {
+					// 轮询消息队列(链表)，记录当前节点与前一个节点
                     prev = p;
                     p = p.next;
                     if (p == null || when < p.when) {
+						// 如果当前节点为空(消息队列结尾)，或者待插入消息需要执行的时间点小于当前消息需要执行的时间点，则跳出循环
+						// 即：消息队列里的消息按照 需要执行的时间点从早到晚 的顺序排列
                         break;
                     }
                     if (needWake && p.isAsynchronous()) {
                         needWake = false;
                     }
                 }
+				// 把待插入消息插入到记录的两个节点之间
                 msg.next = p; // invariant: p == prev.next
                 prev.next = msg;
             }
