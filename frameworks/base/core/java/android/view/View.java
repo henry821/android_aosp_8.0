@@ -3690,7 +3690,7 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
         @ViewDebug.FlagToString(mask = PFLAG_DRAWN, equals = PFLAG_DRAWN, name = "NOT_DRAWN", outputIf = false),
         @ViewDebug.FlagToString(mask = PFLAG_DIRTY_MASK, equals = PFLAG_DIRTY_OPAQUE, name = "DIRTY_OPAQUE"),
         @ViewDebug.FlagToString(mask = PFLAG_DIRTY_MASK, equals = PFLAG_DIRTY, name = "DIRTY")
-    }, formatToHexString = true)
+    }, formatToHexString = true);
 
     /* @hide */
     public int mPrivateFlags;
@@ -6247,6 +6247,10 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
      *
      * @return True there was an assigned OnClickListener that was called, false
      *         otherwise is returned.
+     *
+     * 调用此视图的OnClickListener(如果被设置过)。执行所有与点击关联的正常动作：响应事件、播放声音等等
+     *
+     * @返回 如果OnClickListener被调用则返回true，否则返回false
      */
     public boolean performClick() {
         final boolean result;
@@ -11682,6 +11686,11 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
      *
      * @param event The motion event to be dispatched.
      * @return True if the event was handled by the view, false otherwise.
+     *
+     * 传递触摸屏幕事件给目标视图，如果此视图是目标视图的话就传递给此视图
+     *
+     * @参数 event 被分发的动作事件
+     * @返回 如果事件被此视图处理则返回true，否则返回false
      */
     public boolean dispatchTouchEvent(MotionEvent event) {
         // If the event should be handled by accessibility focus first.
@@ -11712,6 +11721,11 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
             }
             //noinspection SimplifiableIfStatement
             ListenerInfo li = mListenerInfo;
+			// 三个判断条件的说明：
+			// 1.设置了setOnTouchListener方法则mOnTouchListener不为null
+			// 2.如果视图是ENABLE状态则条件为true
+			// 3.如果重写了mOnTouchListener.onTouch方法并返回true，则此条件为true
+		    // 如果三个条件都满足，则不再执行下面的代码，即onTouchEvent和onClick(在onTouchEvent方法内部)方法不再执行
             if (li != null && li.mOnTouchListener != null
                     && (mViewFlags & ENABLED_MASK) == ENABLED
                     && li.mOnTouchListener.onTouch(this, event)) {
@@ -12920,6 +12934,7 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
         final int viewFlags = mViewFlags;
         final int action = event.getAction();
 
+		// 判断此视图是否可点击
         final boolean clickable = ((viewFlags & CLICKABLE) == CLICKABLE
                 || (viewFlags & LONG_CLICKABLE) == LONG_CLICKABLE)
                 || (viewFlags & CONTEXT_CLICKABLE) == CONTEXT_CLICKABLE;
