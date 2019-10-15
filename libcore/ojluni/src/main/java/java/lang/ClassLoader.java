@@ -360,12 +360,15 @@ public abstract class ClassLoader {
         throws ClassNotFoundException
     {
             // First, check if the class has already been loaded
+            // 第一步，检查这个类是否已经被加载过了
             Class<?> c = findLoadedClass(name);
             if (c == null) {
                 try {
                     if (parent != null) {
+						// 如果父加载器不为null，则调用父加载器的loadClass()方法
                         c = parent.loadClass(name, false);
                     } else {
+                    	// 如果没有父加载器(自身是顶层加载器)，则调用findBootstrapClassOrNull()，返回值固定为null
                         c = findBootstrapClassOrNull(name);
                     }
                 } catch (ClassNotFoundException e) {
@@ -373,6 +376,7 @@ public abstract class ClassLoader {
                     // from the non-null parent class loader
                 }
 
+				// 如果还没有找到被加载的类，则自身调用findClass()方法去加载类
                 if (c == null) {
                     // If still not found, then invoke findClass in order
                     // to find the class.

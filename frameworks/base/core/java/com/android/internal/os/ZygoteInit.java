@@ -232,12 +232,19 @@ public class ZygoteInit {
      *
      * Most classes only cause a few hundred bytes to be allocated, but
      * a few will allocate a dozen Kbytes (in one case, 500+K).
+     *
+     * 预加载常用类
      */
     private static void preloadClasses() {
         final VMRuntime runtime = VMRuntime.getRuntime();
 
         InputStream is;
         try {
+			// 将/system/etc/preloaded-classes文件封装成FileInputStream
+			// preloaded-classes文件夹存有预加载类的目录，这个文件在系统源码中的路径为frameworks/base/preloaded-classes
+			// 列举一些preloaded-classes文件中的预加载类名称：
+			// android.app.ContextImpl、android.app.Dialog、android.app.Fragment……
+			// 预加载属于拿空间换时间的策略，Zygote环境配置的越健全越通用，应用程序进程需要单独做的事情也就越少
             is = new FileInputStream(PRELOADED_CLASSES);
         } catch (FileNotFoundException e) {
             Log.e(TAG, "Couldn't find " + PRELOADED_CLASSES + ".");
@@ -272,11 +279,13 @@ public class ZygoteInit {
         runtime.setTargetHeapUtilization(0.8f);
 
         try {
+			// 将FileInputStream封装为BufferedReader
             BufferedReader br
                 = new BufferedReader(new InputStreamReader(is), 256);
 
             int count = 0;
             String line;
+			// 遍历BufferedReader，读出所有预加载类的名称，每读出一个预加载类的名称就调用Class.forName()方法加载该类
             while ((line = br.readLine()) != null) {
                 // Skip comments and blank lines.
                 line = line.trim();
@@ -630,6 +639,7 @@ public class ZygoteInit {
             ZygoteConnection.applyInvokeWithSystemProperty(parsedArgs);
 
             /* Request to fork the system server process */
+			/* Zygote进程通过forkSystemServer方法fork自身创建子进程(SystemServer进程) */
             pid = Zygote.forkSystemServer(
                     parsedArgs.uid, parsedArgs.gid,
                     parsedArgs.gids,
@@ -642,6 +652,7 @@ public class ZygoteInit {
         }
 
         /* For child process */
+		/* 如果pid == 0，说明当前代码是在新创建的SystemServer进程中执行的 */
         if (pid == 0) {
             if (hasSecondZygote(abiList)) {
                 waitForSecondaryZygote(socketName);

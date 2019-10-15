@@ -445,11 +445,13 @@ public final class Class<T> implements java.io.Serializable,
                                    ClassLoader loader)
         throws ClassNotFoundException
     {
+    	// 创建BootClassLoader
         if (loader == null) {
             loader = BootClassLoader.getInstance();
         }
         Class<?> result;
         try {
+			// 将BootClassLoader实例传入到方法中，该方法是Native方法，它的实现由c/c++代码来完成
             result = classForName(name, initialize, loader);
         } catch (ClassNotFoundException e) {
             Throwable cause = e.getCause();

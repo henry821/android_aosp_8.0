@@ -58,6 +58,26 @@ public class BaseDexClassLoader extends ClassLoader {
      * libraries, delimited by {@code File.pathSeparator}; may be
      * {@code null}
      * @param parent the parent class loader
+     *
+     * 构造一个实例
+     * 注意：所有dexPath里的 *.jar 和 *.apk 文件在代码加载前可能会先提取(解压)到内存中。
+     *       这样会避免在dexPath里直接传递原始dex文件(*.dex)
+     *
+     * @参数 dexPath 指目标类所在的APK或jar文件的路径。类加载器从该路径中寻找指定的目标类，该类必须是APK或jar的全路径。
+     *               如果要包含多个路径，路径之间必须使用特定的分隔符(":")分割
+     *               "支持加载APK、DEX和JAR，也可以从SD卡进行加载"指的就是这个路径，
+     *               最终做的是将dexPath路径上的文件ODEX优化到内部位置optimizedDirectory，然后再进行加载
+     * @参数 optimizedDirectory 由于dex文件被包含在APK或者JAR文件中，因此在装载目标类之前需要先从APK或JAR文件中解压出dex文件，该参数就是制定解压出的dex文件存放的路径。
+     *                          这也是对apk中dex根据平台进行ODEX优化的过程。
+     *                          其实APK是一个程序压缩包，里面包含dex文件，ODEX优化就是把包里面的执行程序提取出来，就变成了ODEX文件，
+     *                          因为你提取出来了，系统第一次启动的时候就不用去解压程序压缩包的程序，少了一个解压的过程，这样系统启动就加快了。
+     *                          为什么是第一次呢？因为DEX版本的也只有第一次会解压执行程序到/data/dalvik-cache(针对PathClassLoader)或者optimizedDirectory(针对DexClassLoader),
+     *                          之后也是直接读取目录下的dex文件，所以第二次启动就和正常的差不多了。
+     *                          当然这只是简单的理解，实际生成的ODEX还有一定的优化作用。
+     *                          ClassLoader只能加载内部存储路径中的dex文件，所以这个路径必须为内部路径
+     * @参数 librarySearchPath 指目标类中所使用的的C/C++库存放的路径
+     * @参数 parent 该装载器的父装载器
+     *
      */
     public BaseDexClassLoader(String dexPath, File optimizedDirectory,
             String librarySearchPath, ClassLoader parent) {
@@ -88,6 +108,7 @@ public class BaseDexClassLoader extends ClassLoader {
     @Override
     protected Class<?> findClass(String name) throws ClassNotFoundException {
         List<Throwable> suppressedExceptions = new ArrayList<Throwable>();
+		// 调用了pathList的findClass方法
         Class c = pathList.findClass(name, suppressedExceptions);
         if (c == null) {
             ClassNotFoundException cnfe = new ClassNotFoundException(

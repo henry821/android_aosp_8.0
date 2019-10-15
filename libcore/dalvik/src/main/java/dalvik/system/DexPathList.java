@@ -51,13 +51,21 @@ import static android.system.OsConstants.S_ISDIR;
     private static final String DEX_SUFFIX = ".dex";
     private static final String zipSeparator = "!/";
 
-    /** class definition context */
+    /**
+     * class definition context
+     *
+     * 传入的是BaseDexClassLoader(app运行后，这个值可能是PathClassLoader或DexClassLoader)
+     */
     private final ClassLoader definingContext;
 
     /**
      * List of dex/resource (class path) elements.
      * Should be called pathElements, but the Facebook app uses reflection
      * to modify 'dexElements' (http://b/7726934).
+     *
+     * dex或资源(类路径)元素列表
+     * 一个输出的例子：[zip file "/data/app/com.demo.one-CdW0V4IFtQ-WTLdYKdxdxA==/base.apk"]
+     * Element对象的注释举例也是根据这个例子得出
      */
     private Element[] dexElements;
 
@@ -136,12 +144,14 @@ import static android.system.OsConstants.S_ISDIR;
         }
 
         if (optimizedDirectory != null) {
+			// 文件夹不存在会抛出异常
             if (!optimizedDirectory.exists())  {
                 throw new IllegalArgumentException(
                         "optimizedDirectory doesn't exist: "
                         + optimizedDirectory);
             }
 
+			// 文件夹不可读写会抛出异常
             if (!(optimizedDirectory.canRead()
                             && optimizedDirectory.canWrite())) {
                 throw new IllegalArgumentException(
@@ -154,6 +164,8 @@ import static android.system.OsConstants.S_ISDIR;
 
         ArrayList<IOException> suppressedExceptions = new ArrayList<IOException>();
         // save dexPath for BaseDexClassLoader
+        // 通过makeDexElements方法来获取Element数组
+        // splitDexPath(dexPath)方法用来把我们之前按照":"分隔的路径转为File集合
         this.dexElements = makeDexElements(splitDexPath(dexPath), optimizedDirectory,
                                            suppressedExceptions, definingContext);
 
@@ -304,6 +316,8 @@ import static android.system.OsConstants.S_ISDIR;
     /**
      * Makes an array of dex/resource path elements, one per element of
      * the given array.
+     *
+     * 创建一个 dex/资源路径元素 的数组，数组里的每一个元素都和传入的数组(files)元素一一对应
      */
     private static Element[] makeDexElements(List<File> files, File optimizedDirectory,
             List<IOException> suppressedExceptions, ClassLoader loader) {
@@ -311,6 +325,8 @@ import static android.system.OsConstants.S_ISDIR;
       int elementsPos = 0;
       /*
        * Open all files and load the (direct or contained) dex files up front.
+       *
+       * 遍历打开所有的文件并且加载直接或间接包含dex的文件
        */
       for (File file : files) {
           if (file.isDirectory()) {
@@ -320,9 +336,11 @@ import static android.system.OsConstants.S_ISDIR;
           } else if (file.isFile()) {
               String name = file.getName();
 
+			  // 如果文件名后缀是.dex，说明是原始dex文件
               if (name.endsWith(DEX_SUFFIX)) {
                   // Raw dex file (not inside a zip/jar).
                   try {
+				  	  // 加载dex文件，获取DexFile对象
                       DexFile dex = loadDexFile(file, optimizedDirectory, loader, elements);
                       if (dex != null) {
                           elements[elementsPos++] = new Element(dex, null);
@@ -332,8 +350,10 @@ import static android.system.OsConstants.S_ISDIR;
                       suppressedExceptions.add(suppressed);
                   }
               } else {
+              	  // 如果文件名后缀不是.dex，说明是压缩包文件(jar或zip)
                   DexFile dex = null;
                   try {
+				  	  // 同样通过loadDexFile方式加载dex文件
                       dex = loadDexFile(file, optimizedDirectory, loader, elements);
                   } catch (IOException suppressed) {
                       /*
@@ -370,10 +390,14 @@ import static android.system.OsConstants.S_ISDIR;
     private static DexFile loadDexFile(File file, File optimizedDirectory, ClassLoader loader,
                                        Element[] elements)
             throws IOException {
+        // 如果缓存存放目录为null，说明是PathClassLoader的处理方式，就直接创建一个DexFile对象返回
         if (optimizedDirectory == null) {
             return new DexFile(file, loader, elements);
         } else {
+        	// 进入此处说明是DexClassLoader的处理方式
+        	// 根据缓存存放目录和文件名得到一个优化后的缓存文件路径
             String optimizedPath = optimizedPathFor(file, optimizedDirectory);
+			// 调用DexFile.loadDex()方法来获取DexFile对象
             return DexFile.loadDex(file.getPath(), optimizedPath, 0, loader, elements);
         }
     }
@@ -462,6 +486,7 @@ import static android.system.OsConstants.S_ISDIR;
      * found in any of the dex files
      */
     public Class<?> findClass(String name, List<Throwable> suppressed) {
+    	// 遍历dexElements数组，得到Element对象，调用Element对象的findClass()方法
         for (Element element : dexElements) {
             Class<?> clazz = element.findClass(name, definingContext, suppressed);
             if (clazz != null) {
@@ -560,9 +585,14 @@ import static android.system.OsConstants.S_ISDIR;
         /**
          * A file denoting a zip file (in case of a resource jar or a dex jar), or a directory
          * (only when dexFile is null).
+         *
+         * 一个输出的例子：/data/app/com.demo.one-CdW0V4IFtQ-WTLdYKdxdxA==/base.apk
          */
         private final File path;
 
+		/**
+		 * 一个输出的例子：/data/app/com.demo.one-CdW0V4IFtQ-WTLdYKdxdxA==/base.apk
+		 */
         private final DexFile dexFile;
 
         private ClassPathURLStreamHandler urlHandler;
@@ -630,12 +660,13 @@ import static android.system.OsConstants.S_ISDIR;
 
         @Override
         public String toString() {
+        	// 由例子可以看出：dexFile和path都不为null，所以会执行^-^处的语句
             if (dexFile == null) {
               return (path.isDirectory() ? "directory \"" : "zip file \"") + path + "\"";
             } else {
               if (path == null) {
                 return "dex file \"" + dexFile + "\"";
-              } else {
+              } else { //^-^
                 return "zip file \"" + path + "\"";
               }
             }
@@ -674,6 +705,7 @@ import static android.system.OsConstants.S_ISDIR;
 
         public Class<?> findClass(String name, ClassLoader definingContext,
                 List<Throwable> suppressed) {
+            // 通过类名找到Class对象(最终执行到Native方法)
             return dexFile != null ? dexFile.loadClassBinaryName(name, definingContext, suppressed)
                     : null;
         }
