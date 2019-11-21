@@ -346,12 +346,16 @@ public class LinearLayoutManager extends RecyclerView.LayoutManager implements
      * Calculates the view layout order. (e.g. from end to start or start to end)
      * RTL layout support is applied automatically. So if layout is RTL and
      * {@link #getReverseLayout()} is {@code true}, elements will be laid out starting from left.
+     *
+     * 计算视图布局顺序(例：从底部到顶部 或者 从顶部到底部)
      */
     private void resolveShouldLayoutReverse() {
         // A == B is the same result, but we rather keep it readable
         if (mOrientation == VERTICAL || !isLayoutRTL()) {
+			// 正常情况下会执行此条语句，mShouldReverseLayout为false(不反向布局)
             mShouldReverseLayout = mReverseLayout;
         } else {
+        	// 如果调用了setReverseLayout()设置为true后，则会执行此条语句，mShouldReverseLayout为true(反向布局)
             mShouldReverseLayout = !mReverseLayout;
         }
     }
@@ -473,6 +477,13 @@ public class LinearLayoutManager extends RecyclerView.LayoutManager implements
         // 3) fill towards end, stacking from top
         // 4) scroll to fulfill requirements like stack from bottom.
         // create layout state
+        //
+        // 布局算法：
+        // 1) 通过检查子元素和其他变量，找到一个锚点坐标和一个锚点元素位置
+        // 2) 由底部到顶部填充
+        // 3) 由顶部到底部填充
+        // 4) 通过滚动填充剩余部分
+        // 创建mLayoutState参数
         if (DEBUG) {
             Log.d(TAG, "is pre layout:" + state.isPreLayout());
         }
@@ -489,13 +500,17 @@ public class LinearLayoutManager extends RecyclerView.LayoutManager implements
         ensureLayoutState();
         mLayoutState.mRecycle = false;
         // resolve layout direction
+        // 判断绘制方向，给mShouldReverseLayout赋值，默认是正向绘制，则mShouldReverseLayout为false
         resolveShouldLayoutReverse();
 
+		// mValid的默认值是false，一次测量之后设为true，onLayout完成后会回调执行reset方法，又变为false
         if (!mAnchorInfo.mValid || mPendingScrollPosition != NO_POSITION
                 || mPendingSavedState != null) {
             mAnchorInfo.reset();
+			// mStackFromEnd默认是false(除非手动调用setStatckFromEnd()方法)，所以此处两个都为false，异或则为false，即mLayoutFromEnd为false
             mAnchorInfo.mLayoutFromEnd = mShouldReverseLayout ^ mStackFromEnd;
             // calculate anchor position and coordinate
+            // 计算锚点位置和偏移量
             updateAnchorInfoForLayout(recycler, state, mAnchorInfo);
             mAnchorInfo.mValid = true;
         }
@@ -547,6 +562,7 @@ public class LinearLayoutManager extends RecyclerView.LayoutManager implements
         int startOffset;
         int endOffset;
         final int firstLayoutDirection;
+		// 正常情况下mLayoutFromEnd为false且mShouldReverseLayout为false，则firstLayoutDirection为LayoutState.ITEM_DIRECTION_TAIL(由顶部到底部方向)
         if (mAnchorInfo.mLayoutFromEnd) {
             firstLayoutDirection = mShouldReverseLayout ? LayoutState.ITEM_DIRECTION_TAIL
                     : LayoutState.ITEM_DIRECTION_HEAD;
@@ -559,6 +575,7 @@ public class LinearLayoutManager extends RecyclerView.LayoutManager implements
         detachAndScrapAttachedViews(recycler);
         mLayoutState.mInfinite = resolveIsInfinite();
         mLayoutState.mIsPreLayout = state.isPreLayout();
+		// 正常情况下mLayoutFromEnd为false，所以直接分析else方法体
         if (mAnchorInfo.mLayoutFromEnd) {
             // fill towards start
             updateLayoutStateToFillStart(mAnchorInfo);
@@ -586,6 +603,7 @@ public class LinearLayoutManager extends RecyclerView.LayoutManager implements
             }
         } else {
             // fill towards end
+            // 从锚点往下绘制
             updateLayoutStateToFillEnd(mAnchorInfo);
             mLayoutState.mExtra = extraForEnd;
             fill(recycler, mLayoutState, state, false);
@@ -595,6 +613,7 @@ public class LinearLayoutManager extends RecyclerView.LayoutManager implements
                 extraForStart += mLayoutState.mAvailable;
             }
             // fill towards start
+            // 从锚点往上绘制
             updateLayoutStateToFillStart(mAnchorInfo);
             mLayoutState.mExtra = extraForStart;
             mLayoutState.mCurrentPosition += mLayoutState.mItemDirection;
@@ -635,6 +654,7 @@ public class LinearLayoutManager extends RecyclerView.LayoutManager implements
             }
         }
         layoutForPredictiveAnimations(recycler, state, startOffset, endOffset);
+		// 完成后重置参数
         if (!state.isPreLayout()) {
             mOrientationHelper.onLayoutComplete();
         } else {
@@ -962,6 +982,9 @@ public class LinearLayoutManager extends RecyclerView.LayoutManager implements
         return getLayoutDirection() == ViewCompat.LAYOUT_DIRECTION_RTL;
     }
 
+	/**
+	 * 创建LayoutState和OrientationHelper
+	 */
     void ensureLayoutState() {
         if (mLayoutState == null) {
             mLayoutState = createLayoutState();
@@ -1476,6 +1499,15 @@ public class LinearLayoutManager extends RecyclerView.LayoutManager implements
      * @param state           Context passed by the RecyclerView to control scroll steps.
      * @param stopOnFocusable If true, filling stops in the first focusable new child
      * @return Number of pixels that it added. Useful for scroll functions.
+     *
+     * 有魔力的方法，根据LayoutState充满给定的布局。这个方法相当地独立于LinearLayoutManager其余的方法，
+     * 而且仅需要一点变化，这个方法就能够当做一个公开的帮助类。
+     *
+     * @参数 recycler          与当前RecyclerView关联的Recycler
+     * @参数 layoutState       关于如何填充可用空间的配置
+     * @参数 state             RecyclerView传入的上下文，为了控制滚动步骤
+     * @参数 stopOnFocusable 如果为真，则在第一个获取焦点的新子元素中停止填充
+     * @返回 添加的像素数，对于滚动方法很有用
      */
     int fill(RecyclerView.Recycler recycler, LayoutState layoutState,
             RecyclerView.State state, boolean stopOnFocusable) {
@@ -2203,8 +2235,14 @@ public class LinearLayoutManager extends RecyclerView.LayoutManager implements
          * Also updates current item index to the next item, based on {@link #mItemDirection}
          *
          * @return The next element that we should layout.
+         *
+         * 获取我们需要布局的下一个元素的视图，
+         * 另外把当前条目索引值更新为下一个条目，基于mItemDirection
+         *
+         * @返回 需要布局的下一个元素
          */
         View next(RecyclerView.Recycler recycler) {
+        	// mScrapList默认为空，只有执行layoutForPredictiveAnimations前不为空，执行完后又变为空
             if (mScrapList != null) {
                 return nextViewFromScrapList();
             }

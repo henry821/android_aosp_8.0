@@ -3092,6 +3092,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
 
     @Override
     protected void onMeasure(int widthSpec, int heightSpec) {
+    	// 如果没有设置LayoutManager，直接走defaultOnMeasure方法，显示空白页面
         if (mLayout == null) {
             defaultOnMeasure(widthSpec, heightSpec);
             return;
@@ -3102,23 +3103,29 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
             final boolean skipMeasure = widthMode == MeasureSpec.EXACTLY
                     && heightMode == MeasureSpec.EXACTLY;
             mLayout.onMeasure(mRecycler, mState, widthSpec, heightSpec);
+			// 如果宽高的MeasureSpec都是EXACTLY，说明都是绝对值，则跳过measure过程直接走layout
             if (skipMeasure || mAdapter == null) {
                 return;
             }
             if (mState.mLayoutStep == State.STEP_START) {
+				// mLayoutStep的默认值是State.STEP_START
                 dispatchLayoutStep1();
+				// 执行完dispatchLayoutStep1()方法后mLayoutStep的值是State.STEP_LAYOUT
             }
             // set dimensions in 2nd step. Pre-layout should happen with old dimensions for
             // consistency
             mLayout.setMeasureSpecs(widthSpec, heightSpec);
             mState.mIsMeasuring = true;
+			// 真正执行LayoutManager绘制的地方
             dispatchLayoutStep2();
+			// 执行完dispatchLayoutStep2()后mLayoutStep的值是State.STEP_ANIMATIONS
 
             // now we can get the width and height from the children.
             mLayout.setMeasuredDimensionFromChildren(widthSpec, heightSpec);
 
             // if RecyclerView has non-exact width and height and if there is at least one child
             // which also has non-exact width & height, we have to re-measure.
+            // 如果RecyclerView没有确定的宽高而且有至少一个条目也没有固定的宽高，则会重测量(测量两次)
             if (mLayout.shouldMeasureTwice()) {
                 mLayout.setMeasureSpecs(
                         MeasureSpec.makeMeasureSpec(getMeasuredWidth(), MeasureSpec.EXACTLY),
@@ -3165,6 +3172,8 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
 
     /**
      * Used when onMeasure is called before layout manager is set
+     *
+     * 在设置LayoutManager之前调用onMeasure()方法时使用
      */
     void defaultOnMeasure(int widthSpec, int heightSpec) {
         // calling LayoutManager here is not pretty but that API is already public and it is better
@@ -3585,6 +3594,12 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
      * - decide which animation should run
      * - save information about current views
      * - If necessary, run predictive layout and save its information
+     *
+     * layout的第一步,在这一步中有以下操作:
+     * - 处理Adapter的更新
+     * - 决定运行哪个动画
+     * - 保存当前视图的信息
+     * - 如果必要的话，执行上一个布局的操作并保存它的信息(predictive:预言性的)
      */
     private void dispatchLayoutStep1() {
         mState.assertLayoutStep(State.STEP_START);
@@ -3677,6 +3692,9 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
     /**
      * The second layout step where we do the actual layout of the views for the final state.
      * This step might be run multiple times if necessary (e.g. measure).
+     *
+     * layout的第二步,在这一步我们为视图执行真正的布局操作,为了使其达到最终的状态。
+     * 如果必要的话这一步可能会运行多次(例如: measure)
      */
     private void dispatchLayoutStep2() {
         eatRequestLayout();
@@ -3688,6 +3706,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
 
         // Step 2: Run layout
         mState.mInPreLayout = false;
+		// 将内部持有的Recycler和State传递给LayoutManager，由具体的LayoutManager执行布局操作
         mLayout.onLayoutChildren(mRecycler, mState);
 
         mState.mStructureChanged = false;
@@ -5332,6 +5351,11 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
      * If not, the view can be quickly reused by the LayoutManager with no further work.
      * Clean views that have not {@link android.view.View#isLayoutRequested() requested layout}
      * may be repositioned by a LayoutManager without remeasurement.</p>
+     *
+     * 一级缓存：mAttachedScrap
+     * 二级缓存：mCacheViews
+     * 三级缓存：mViewCacheExtension
+     * 四级缓存：mRecyclerPool
      */
     public final class Recycler {
         final ArrayList<ViewHolder> mAttachedScrap = new ArrayList<>();
@@ -5572,6 +5596,15 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
          *                   create/bind the holder if needed.
          *
          * @return ViewHolder for requested position
+         *
+         *
+         * 尝试根据给定的位置得到ViewHolder,可能从Recycler scrap、cache、RecyclerViewPool得到或者直接创建
+         *
+         * @参数 position 返回的ViewHolder的位置
+         * @参数 dryRun 如果为true,则ViewHolder不会从缓存中被移除
+         * @参数 deadlineNs 规定了bind、create工作需要完成的时间,相对于getNanoTime。如果传入FOREVER_NS,则create、bind ViewHolder的操作不会失败。
+         *
+         * @返回值 当前位置需要的ViewHolder
          */
         @Nullable
         ViewHolder tryGetViewHolderForPositionByDeadline(int position,
@@ -5584,6 +5617,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
             boolean fromScrapOrHiddenOrCache = false;
             ViewHolder holder = null;
             // 0) If there is a changed scrap, try to find from there
+            // preLayout默认是false，只有有动画的时候才为true
             if (mState.isPreLayout()) {
                 holder = getChangedScrapViewForPosition(position);
                 fromScrapOrHiddenOrCache = holder != null;
@@ -6067,11 +6101,18 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
          * @param position Item position
          * @param dryRun  Does a dry run, finds the ViewHolder but does not remove
          * @return a ViewHolder that can be re-used for this position.
+         *
+         * 根据位置从attach scrap、hidden children或者cache中获得ViewHolder
+         *
+         * @参数 position 条目位置
+         * @参数 dryRun 如果是true的话,找到ViewHolder后不会从缓存中移除
+         * @返回值 此位置可以被复用的ViewHolder
          */
         ViewHolder getScrapOrHiddenOrCachedHolderForPosition(int position, boolean dryRun) {
             final int scrapCount = mAttachedScrap.size();
 
             // Try first for an exact, non-invalid match from scrap.
+            // 首先尝试从mAttachedScrap缓存中寻找确定的、有效的匹配项
             for (int i = 0; i < scrapCount; i++) {
                 final ViewHolder holder = mAttachedScrap.get(i);
                 if (!holder.wasReturnedFromScrap() && holder.getLayoutPosition() == position
@@ -6082,11 +6123,14 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
             }
 
             if (!dryRun) {
+				//从mHiddenViews中获得,这里获得的是View
                 View view = mChildHelper.findHiddenNonRemovedView(position);
                 if (view != null) {
                     // This View is good to be used. We just need to unhide, detach and move to the
                     // scrap list.
+                    // 这个View适合使用,我们只需要取消隐藏、分离然后移动到Scrap缓存列表中
                     final ViewHolder vh = getChildViewHolderInt(view);
+					//从HiddlenView中移除
                     mChildHelper.unhide(view);
                     int layoutIndex = mChildHelper.indexOfChild(view);
                     if (layoutIndex == RecyclerView.NO_POSITION) {
@@ -6102,6 +6146,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
             }
 
             // Search in our first-level recycled view cache.
+            // 遍历mCachedViews寻找有效的、位置一致的ViewHolder
             final int cacheSize = mCachedViews.size();
             for (int i = 0; i < cacheSize; i++) {
                 final ViewHolder holder = mCachedViews.get(i);
@@ -8737,10 +8782,18 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
          * @param child Child view to measure
          * @param widthUsed Width in pixels currently consumed by other views, if relevant
          * @param heightUsed Height in pixels currently consumed by other views, if relevant
+         *
+         * 使用标准测量策略测量子元素，考虑的因素有：父RecyclerView的内边距、所有添加元素的分割线和子元素的外边距
+         * 如果RecyclerView能在任意维度滚动，调用者会在传入widthUsed或heightUsed参数时传入0值，因为他们是不相干的
+         *
+         * @参数 child 需要测量的子元素
+         * @参数 widthUsed 被其他视图消耗掉的横向像素值，如果有关
+         * @参数 heightUsed 被其他视图消耗掉的纵向像素值，如果有关
          */
         public void measureChildWithMargins(View child, int widthUsed, int heightUsed) {
             final LayoutParams lp = (LayoutParams) child.getLayoutParams();
 
+			// 设置分割线中的回调方法
             final Rect insets = mRecyclerView.getItemDecorInsetsForChild(child);
             widthUsed += insets.left + insets.right;
             heightUsed += insets.top + insets.bottom;
