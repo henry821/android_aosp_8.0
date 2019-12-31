@@ -646,6 +646,8 @@ public final class LoadedApk {
         if (!mIncludeCode) {
             if (mClassLoader == null) {
                 StrictMode.ThreadPolicy oldPolicy = StrictMode.allowThreadDiskReads();
+				// 走到此处说明不是系统应用且ClassLoader为null，则通过以下方法创建ClassLoader
+				// 创建出来的是PathClassLoader
                 mClassLoader = ApplicationLoaders.getDefault().getClassLoader(
                     "" /* codePath */, mApplicationInfo.targetSdkVersion, isBundledApp,
                     librarySearchPath, libraryPermittedPath, mBaseClassLoader);
@@ -814,6 +816,7 @@ public final class LoadedApk {
             (sharable)
             ? new WarningContextClassLoader()
             : mClassLoader;
+		// 设置当前线程的ClassLoader
         Thread.currentThread().setContextClassLoader(contextClassLoader);
     }
 
@@ -940,6 +943,7 @@ public final class LoadedApk {
 
     public Application makeApplication(boolean forceDefaultAppClass,
             Instrumentation instrumentation) {
+        // 保证只创建一次Application
         if (mApplication != null) {
             return mApplication;
         }
@@ -954,6 +958,7 @@ public final class LoadedApk {
         }
 
         try {
+			// 获取C	lassLoader
             java.lang.ClassLoader cl = getClassLoader();
             if (!mPackageName.equals("android")) {
                 Trace.traceBegin(Trace.TRACE_TAG_ACTIVITY_MANAGER,
@@ -962,6 +967,7 @@ public final class LoadedApk {
                 Trace.traceEnd(Trace.TRACE_TAG_ACTIVITY_MANAGER);
             }
             ContextImpl appContext = ContextImpl.createAppContext(mActivityThread, this);
+			// 创建Application
             app = mActivityThread.mInstrumentation.newApplication(
                     cl, appClass, appContext);
             appContext.setOuterContext(app);

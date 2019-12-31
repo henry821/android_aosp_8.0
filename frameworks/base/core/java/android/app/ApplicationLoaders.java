@@ -45,10 +45,14 @@ public class ApplicationLoaders {
          * this should be the "system" class loader; in practice we
          * don't use that and can happily (and more efficiently) use the
          * bootstrap class loader.
+         *
+         * 这里获取的是BootClassLoader
          */
         ClassLoader baseParent = ClassLoader.getSystemClassLoader().getParent();
 
         synchronized (mLoaders) {
+			// 应用第一次启动进入到此处传入的ClassLoader一定是null
+			// 则parent = baseParent = BootClassLoader
             if (parent == null) {
                 parent = baseParent;
             }
@@ -59,6 +63,7 @@ public class ApplicationLoaders {
              * new ClassLoader for the zip archive.
              */
             if (parent == baseParent) {
+				// 尝试获取缓存
                 ClassLoader loader = mLoaders.get(cacheKey);
                 if (loader != null) {
                     return loader;
@@ -66,6 +71,7 @@ public class ApplicationLoaders {
 
                 Trace.traceBegin(Trace.TRACE_TAG_ACTIVITY_MANAGER, zip);
 
+				// 从缓存中没有获取到ClassLoader，则创建出PathClassLoader
                 PathClassLoader pathClassloader = PathClassLoaderFactory.createClassLoader(
                                                       zip,
                                                       librarySearchPath,
@@ -80,6 +86,7 @@ public class ApplicationLoaders {
                 setupVulkanLayerPath(pathClassloader, librarySearchPath);
                 Trace.traceEnd(Trace.TRACE_TAG_ACTIVITY_MANAGER);
 
+				// 将刚才创建的ClassLoader放入缓存
                 mLoaders.put(cacheKey, pathClassloader);
                 return pathClassloader;
             }

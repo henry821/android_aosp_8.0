@@ -2137,6 +2137,8 @@ public final class ActivityThread {
                         + " (in " + (mBoundApplication != null
                                 ? mBoundApplication.processName : null)
                         + ")");
+				// 未从缓存中找到packageInfo，则直接创建一个
+				// 注意传入的ClassLoader是null
                 packageInfo =
                     new LoadedApk(this, aInfo, compatInfo, baseLoader,
                             securityViolation, includeCode &&
@@ -5552,6 +5554,7 @@ public final class ActivityThread {
             applyCompatConfiguration(mCurDefaultDisplayDpi);
         }
 
+		// 创建LoaderApk
         data.info = getPackageInfoNoCheck(data.appInfo, data.compatInfo);
 
         /**
@@ -5787,6 +5790,7 @@ public final class ActivityThread {
         try {
             // If the app is being launched for full backup or restore, bring it up in
             // a restricted environment with the base application class.
+            // 调用了LoadedApk中的makeApplication方法创建Application
             Application app = data.info.makeApplication(data.restrictedBackupMode, null);
             mInitialApplication = app;
 

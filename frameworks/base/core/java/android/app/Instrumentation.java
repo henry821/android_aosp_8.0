@@ -1083,6 +1083,8 @@ public class Instrumentation {
     public Application newApplication(ClassLoader cl, String className, Context context)
             throws InstantiationException, IllegalAccessException,
             ClassNotFoundException {
+        // 使用ClassLoader.loadClass来加载Application类，这个ClassLoader就是上面创建的PathClassLoader
+        // 这里传入的context就是上面创建的ContextImpl
         return newApplication(cl.loadClass(className), context);
     }
 
