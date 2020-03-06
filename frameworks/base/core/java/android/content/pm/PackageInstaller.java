@@ -881,6 +881,8 @@ public class PackageInstaller {
          */
         public void commit(@NonNull IntentSender statusReceiver) {
             try {
+				// add by whw: mSession的类型为IPackageInstallerSession，说明要通过IPackageInstallerSession来进行进程间通信
+				// add by whw: 最终会调用PackageInstallerSession的commit方法
                 mSession.commit(statusReceiver);
             } catch (RemoteException e) {
                 throw e.rethrowFromSystemServer();

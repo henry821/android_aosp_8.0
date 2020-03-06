@@ -91,10 +91,15 @@ public class PackageInstallerActivity extends OverlayTouchActivity implements On
     private String mOriginatingPackage; // The package name corresponding to #mOriginatingUid
 
     private boolean localLOGV = false;
+	// add by whw: 用于向应用程序进程提供一些功能，最终的功能由PMS实现
     PackageManager mPm;
+	// add by whw: 一个AIDL的接口，用于和PMS进行进程间通信
     IPackageManager mIpm;
+	// add by whw: 用于权限动态监测，在Android4.3中被引入
     AppOpsManager mAppOpsManager;
+	// add by whw: 用于多用户管理
     UserManager mUserManager;
+	// add by whw: 提供安装、升级和删除应用程序功能
     PackageInstaller mInstaller;
     PackageInfo mPkgInfo;
     String mCallingPackage;
@@ -342,6 +347,7 @@ public class PackageInstallerActivity extends OverlayTouchActivity implements On
     }
 
     private void initiateInstall() {
+    	// add by whw: 得到包名
         String pkgName = mPkgInfo.packageName;
         // Check if there is already a package on the device with this name
         // but it has been renamed to something else.
@@ -356,6 +362,7 @@ public class PackageInstallerActivity extends OverlayTouchActivity implements On
             // This is a little convoluted because we want to get all uninstalled
             // apps, but this may include apps with just data, and if it is just
             // data we still want to count it as "installed".
+            // add by whw: 根据包名获取应用程序信息
             mAppInfo = mPm.getApplicationInfo(pkgName,
                     PackageManager.MATCH_UNINSTALLED_PACKAGES);
             if ((mAppInfo.flags&ApplicationInfo.FLAG_INSTALLED) == 0) {
@@ -365,6 +372,7 @@ public class PackageInstallerActivity extends OverlayTouchActivity implements On
             mAppInfo = null;
         }
 
+		// add by whw: 初始化安装确认界面
         startInstallConfirm();
     }
 
@@ -488,13 +496,18 @@ public class PackageInstallerActivity extends OverlayTouchActivity implements On
     /**
      * Check if it is allowed to install the package and initiate install if allowed. If not allowed
      * show the appropriate dialog.
+     *
+     * 检查是否允许安装此包，如果允许就初始化安装，如果不允许就展示适当的对话框
      */
     private void checkIfAllowedAndInitiateInstall() {
+    	// add by whw: 判断如果允许安装未知来源或者根据Intent判断得出该APK不是未知来源
         if (mAllowUnknownSources || !isInstallRequestFromUnknownSource(getIntent())) {
+			// add by whw：初始化安装
             initiateInstall();
             return;
         }
         // If the admin prohibits it, just show error and exit.
+        // add by whw：如果管理员限制来自未知来源的安装，就弹出提示对话框或者跳转到设置界面
         if (isUnknownSourcesDisallowed()) {
             if ((mUserManager.getUserRestrictionSource(UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES,
                     Process.myUserHandle()) & UserManager.RESTRICTION_SOURCE_SYSTEM) != 0) {
@@ -507,6 +520,7 @@ public class PackageInstallerActivity extends OverlayTouchActivity implements On
                 finish();
             }
         } else {
+        	// add by whw：处理未知来源的apk
             handleUnknownSources();
         }
     }
@@ -554,6 +568,11 @@ public class PackageInstallerActivity extends OverlayTouchActivity implements On
      * @param packageUri The URI to parse
      *
      * @return {@code true} iff the installer could be set up
+     *
+     * 解析Uri并为要安装的包准备installer
+     *
+     * @参数 packageUri 需要解析的uri
+     * @返回 如果installer准备成功则返回true
      */
     private boolean processPackageUri(final Uri packageUri) {
         mPackageURI = packageUri;
@@ -580,7 +599,9 @@ public class PackageInstallerActivity extends OverlayTouchActivity implements On
             } break;
 
             case SCHEME_FILE: {
+				// add by whw：根据packageUri创建文件（其实就是要安装的apk）
                 File sourceFile = new File(packageUri.getPath());
+				// add by whw：得到sourceFile的包信息
                 PackageParser.Package parsed = PackageUtil.getPackageInfo(this, sourceFile);
 
                 // Check for parse errors
@@ -590,6 +611,7 @@ public class PackageInstallerActivity extends OverlayTouchActivity implements On
                     setPmResult(PackageManager.INSTALL_FAILED_INVALID_APK);
                     return false;
                 }
+				// add by whw：对parsed进行进一步处理得到包信息PackageInfo
                 mPkgInfo = PackageParser.generatePackageInfo(parsed, null,
                         PackageManager.GET_PERMISSIONS, 0, 0, null,
                         new PackageUserState());
@@ -641,6 +663,7 @@ public class PackageInstallerActivity extends OverlayTouchActivity implements On
 
     private void startInstall() {
         // Start subactivity to actually install the application
+        // add by whw: 启动真正安装应用的子Activity(InstallInstalling)
         Intent newIntent = new Intent();
         newIntent.putExtra(PackageUtil.INTENT_ATTR_APPLICATION_INFO,
                 mPkgInfo.applicationInfo);

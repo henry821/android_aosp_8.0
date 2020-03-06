@@ -184,6 +184,8 @@ public class InstallStaging extends Activity {
                     return false;
                 }
 
+				// add by whw：把uri里传入的需要安装的文件写入mStagedFile
+				// add by whw：一种传入方式--> intent.setDataAndType(Uri.parse("file://" + path),"application/vnd.android.package-archive");
                 try (OutputStream out = new FileOutputStream(mStagedFile)) {
                     byte[] buffer = new byte[4096];
                     int bytesRead;
@@ -206,6 +208,7 @@ public class InstallStaging extends Activity {
         protected void onPostExecute(Boolean success) {
             if (success) {
                 // Now start the installation again from a file
+                // add by whw：把mStagedFile传入PackageInstallerActivity
                 Intent installIntent = new Intent(getIntent());
                 installIntent.setClass(InstallStaging.this, PackageInstallerActivity.class);
                 installIntent.setData(Uri.fromFile(mStagedFile));

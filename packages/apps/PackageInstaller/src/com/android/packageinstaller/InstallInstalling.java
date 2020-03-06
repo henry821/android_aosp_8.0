@@ -46,6 +46,11 @@ import java.io.OutputStream;
  * installation succeeds, start {@link InstallSuccess} or {@link InstallFailed}.
  * <p>This has two phases: First send the data to the package manager, then wait until the package
  * manager processed the result.</p>
+ *
+ * 向包管理器发送包的信息并处理包管理器的回调。一旦安装完成，启动 InstallSuccess 或者 InstallFailed 页面
+ * 这里有两个步骤：
+ * 1. 向包管理器发送数据
+ * 2. 在包管理器处理完返回结果前一直等待
  */
 public class InstallInstalling extends Activity {
     private static final String LOG_TAG = InstallInstalling.class.getSimpleName();
@@ -92,16 +97,22 @@ public class InstallInstalling extends Activity {
                 launchFailure(PackageManager.INSTALL_FAILED_INTERNAL_ERROR, null);
             }
         } else {
+        	// add by whw: 根据mPackageURI创建一个对应的文件
             final File sourceFile = new File(mPackageURI.getPath());
             PackageUtil.initSnippetForNewApp(this, PackageUtil.getAppSnippet(this, appInfo,
                     sourceFile), R.id.app_snippet);
 
+			// add by whw: 如果savedInstanceState不为null，获取此前保存的mSessionId和mInstallId
+			// add by whw: mSessionId是安装包的会话id
+			// add by whw: mInstallId是等待的安装事件id
             if (savedInstanceState != null) {
                 mSessionId = savedInstanceState.getInt(SESSION_ID);
                 mInstallId = savedInstanceState.getInt(INSTALL_ID);
 
                 // Reregister for result; might instantly call back if result was delivered while
                 // activity was destroyed
+                // add by whw: 向InstallEventReceiver注册一个观察者
+                // add by whw: launchFinishBaseOnResult会接收到安装事件的回调，无论安装成功或者失败都会关闭当前Activity
                 try {
                     InstallEventReceiver.addObserver(this, mInstallId,
                             this::launchFinishBasedOnResult);
@@ -109,6 +120,7 @@ public class InstallInstalling extends Activity {
                     // Does not happen
                 }
             } else {
+            	// add by whw: 创建SessionParams，它用来代表安装会话的参数
                 PackageInstaller.SessionParams params = new PackageInstaller.SessionParams(
                         PackageInstaller.SessionParams.MODE_FULL_INSTALL);
                 params.referrerUri = getIntent().getParcelableExtra(Intent.EXTRA_REFERRER);
@@ -119,6 +131,7 @@ public class InstallInstalling extends Activity {
 
                 File file = new File(mPackageURI.getPath());
                 try {
+					// add by whw：根据mPackageURI对包(需要安装的APK)进行轻量级的解析，并将解析的参数赋值给SessionParams
                     PackageParser.PackageLite pkg = PackageParser.parsePackageLite(file, 0);
                     params.setAppPackageName(pkg.packageName);
                     params.setInstallLocation(pkg.installLocation);
@@ -136,6 +149,7 @@ public class InstallInstalling extends Activity {
                 }
 
                 try {
+					// add by whw: 向InstallEventReceiver注册一个观察者，并返回一个新的mInstallId
                     mInstallId = InstallEventReceiver
                             .addObserver(this, EventResultPersister.GENERATE_NEW_ID,
                                     this::launchFinishBasedOnResult);
@@ -144,6 +158,8 @@ public class InstallInstalling extends Activity {
                 }
 
                 try {
+					// add by whw: PackageInstaller的createSession方法内部会通过IPackageInstaller与PackageInstallerService进行进程间通信
+					// add by whw: 最终调用的是PackageInstallerService的createSession方法来创建并返回mSessionId
                     mSessionId = getPackageManager().getPackageInstaller().createSession(params);
                 } catch (IOException e) {
                     launchFailure(PackageManager.INSTALL_FAILED_INTERNAL_ERROR, null);
@@ -212,9 +228,12 @@ public class InstallInstalling extends Activity {
 
         // This is the first onResume in a single life of the activity
         if (mInstallingTask == null) {
+			// add by whw: 根据mSessionId得到SessionInfo，SessionInfo代表安装会话的详细信息
             PackageInstaller installer = getPackageManager().getPackageInstaller();
             PackageInstaller.SessionInfo sessionInfo = installer.getSessionInfo(mSessionId);
 
+			// add by whw: 如果sessionInfo不为null并且是不活动的，就创建并执行InstallingAsyncTask
+			// add by whw: InstallingAsyncTask的doInBackGround方法中会根据包(APK)的Uri，将APK的信息通过IO流的形式写入到PackageInstaller.Session中
             if (sessionInfo != null && !sessionInfo.isActive()) {
                 mInstallingTask = new InstallingAsyncTask();
                 mInstallingTask.execute();
@@ -388,6 +407,8 @@ public class InstallInstalling extends Activity {
                         getPackageManager().getPermissionControllerPackageName());
                 broadcastIntent.putExtra(EventResultPersister.EXTRA_ID, mInstallId);
 
+				// add by whw: 创建了一个PendingIntent，并将该PendingIntent的IntentSender通过
+				// add by whw: PackageInstaller.Session的commit方法发送出去
                 PendingIntent pendingIntent = PendingIntent.getBroadcast(
                         InstallInstalling.this,
                         mInstallId,

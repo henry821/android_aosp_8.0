@@ -1436,11 +1436,16 @@ public class PackageManagerService extends IPackageManager.Stub
                     // If a bind was already initiated we dont really
                     // need to do anything. The pending install
                     // will be processed later on.
+                    // add by whw: mBound用于标识是否绑定了DefaultContainerService，默认值为false
+                    // add by whw: DefaultContainerService是用于检查和复制可移动文件的服务，这是一个比较耗时的操作
+                    // add by whw: 因此DefaultContainerService没有和PMS运行在同一进程中
+                    // add by whw: 它运行在com.android.defcontainer进程，通过IMediaContainerService和PMS进行IPC通信
                     if (!mBound) {
                         Trace.asyncTraceBegin(TRACE_TAG_PACKAGE_MANAGER, "bindingMCS",
                                 System.identityHashCode(mHandler));
                         // If this is the only one pending we might
                         // have to bind to the service again.
+                        // add by whw: 如果没有绑定服务，重新绑定，connectToService方法内部如果绑定成功会将mBound置为true
                         if (!connectToService()) {
                             Slog.e(TAG, "Failed to bind to media container service");
                             params.serviceError();
@@ -1450,10 +1455,12 @@ public class PackageManagerService extends IPackageManager.Stub
                                 Trace.asyncTraceEnd(TRACE_TAG_PACKAGE_MANAGER, params.traceMethod,
                                         params.traceCookie);
                             }
+							// add by whw: 绑定服务失败则return
                             return;
                         } else {
                             // Once we bind to the service, the first
                             // pending request will be processed.
+                            // add by whw: 绑定服务成功，将请求添加到ArrayList类型的mPendingInstalls中，等待处理
                             mPendingInstalls.add(idx, params);
                         }
                     } else {
@@ -14290,6 +14297,7 @@ public class PackageManagerService extends IPackageManager.Stub
         Trace.asyncTraceBegin(TRACE_TAG_PACKAGE_MANAGER, "queueInstall",
                 System.identityHashCode(msg.obj));
 
+		// add by whw: 向Handler发送INIT_COPY消息，并携带安装数据
         mHandler.sendMessage(msg);
     }
 

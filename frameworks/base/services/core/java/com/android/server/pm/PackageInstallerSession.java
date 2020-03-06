@@ -214,6 +214,7 @@ public class PackageInstallerSession extends IPackageInstallerSession.Stub {
 
             synchronized (mLock) {
                 if (msg.obj != null) {
+					// add by whw: 获取IPackageInstallObserver2类型的观察者mRemoteObserver
                     mRemoteObserver = (IPackageInstallObserver2) msg.obj;
                 }
 
@@ -556,8 +557,11 @@ public class PackageInstallerSession extends IPackageInstallerSession.Stub {
         // will probably close their end.
         mActiveCount.incrementAndGet();
 
+		// add by whw: 将包的信息封装为PackageInstallObserverAdapter，它在PMS中被定义
         final PackageInstallObserverAdapter adapter = new PackageInstallObserverAdapter(mContext,
                 statusReceiver, sessionId, mIsInstallerDeviceOwner, userId);
+		// add by whw: 向Handler发送一个类型为MSG_COMMIT的消息，其中adapter.getBinder会得到IPackageInstallerObserver2.Stub类型的观察者
+		// add by whw: 这个观察者是可以跨进程回调的
         mHandler.obtainMessage(MSG_COMMIT, adapter.getBinder()).sendToTarget();
     }
 
@@ -676,6 +680,7 @@ public class PackageInstallerSession extends IPackageInstallerSession.Stub {
         }
 
         mRelinquished = true;
+		// add by whw: 调用PackageManagerService的installStage方法
         mPm.installStage(mPackageName, stageDir, stageCid, localObserver, params,
                 installerPackageName, installerUid, user, mCertificates);
     }
