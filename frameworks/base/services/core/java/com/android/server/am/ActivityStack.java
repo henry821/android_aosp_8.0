@@ -2246,6 +2246,7 @@ class ActivityStack<T extends StackWindowController> extends ConfigurationContai
         // Find the next top-most activity to resume in this stack that is not finishing and is
         // focusable. If it is not focusable, we will fall into the case below to resume the
         // top activity in the next focusable task.
+        // 找到第一个没有finishing的栈顶Activity
         final ActivityRecord next = topRunningActivityLocked(true /* focusableOnly */);
 
         final boolean hasRunningActivity = next != null;

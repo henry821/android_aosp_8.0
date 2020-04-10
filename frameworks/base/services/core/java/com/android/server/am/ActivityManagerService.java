@@ -4462,6 +4462,18 @@ public class ActivityManagerService extends IActivityManager.Stub
         }
     }
 
+	/**
+	 * @参数 caller 当前应用的ApplicationThread对象mAppThread
+	 * @参数 callingPackage 调用当前ContextImpl.getBasePackageName(),获取当前Activity所在包名
+	 * @参数 intent 这便是启动Activity时传过来的参数
+	 * @参数 resolvedType 调用intent.resolveTypeIfNeeded而获取
+	 * @参数 resultTo 来自于当前Activity.mToken
+	 * @参数 resultWho 来自于当前Activity.mEmbeddedID
+	 * @参数 requestCode 传入的值是-1
+	 * @参数 startFlags 传入的值是0
+	 * @参数 profilerInfo 传入的值是null
+	 * @参数 bOptions 传入的值是null
+	 */
     @Override
     public final int startActivity(IApplicationThread caller, String callingPackage,
             Intent intent, String resolvedType, IBinder resultTo, String resultWho, int requestCode,

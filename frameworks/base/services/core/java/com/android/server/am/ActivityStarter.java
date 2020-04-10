@@ -303,7 +303,7 @@ class ActivityStarter {
         ProcessRecord callerApp = null;
 		// 判断IApplicationThread类型的caller是否为null，这个caller是方法调用一路传过来的，指向的是Launcher进程的ApplicationThread对象
         if (caller != null) {
-			// 获取Launcher进程，它是ProcessRecord类型的，ProcessRecord英语描述一个应用程序进程
+			// 获取Launcher进程，它是ProcessRecord类型的，ProcessRecord用于描述一个应用程序进程
             callerApp = mService.getRecordForAppLocked(caller);
             if (callerApp != null) {
 				// 获取Launcher进程的pid和uid并赋值
@@ -327,6 +327,7 @@ class ActivityStarter {
         ActivityRecord sourceRecord = null;
         ActivityRecord resultRecord = null;
         if (resultTo != null) {
+			// 获取调用者所在的Activity
             sourceRecord = mSupervisor.isInAnyStackLocked(resultTo);
             if (DEBUG_RESULTS) Slog.v(TAG_RESULTS,
                     "Will send result to " + resultTo + " " + sourceRecord);
@@ -342,6 +343,7 @@ class ActivityStarter {
         if ((launchFlags & Intent.FLAG_ACTIVITY_FORWARD_RESULT) != 0 && sourceRecord != null) {
             // Transfer the result target from the source activity to the new
             // one being started, including any failures.
+            // activity执行结果的返回由源Activity转换到新Activity,不需要返回结果则不会进入该分支
             if (requestCode >= 0) {
                 ActivityOptions.abort(options);
                 return ActivityManager.START_FORWARD_AND_REQUEST_CONFLICT;
@@ -374,12 +376,14 @@ class ActivityStarter {
         if (err == ActivityManager.START_SUCCESS && intent.getComponent() == null) {
             // We couldn't find a class that can handle the given Intent.
             // That's the end of that!
+            // 从Intent中无法找到相应的Component
             err = ActivityManager.START_INTENT_NOT_RESOLVED;
         }
 
         if (err == ActivityManager.START_SUCCESS && aInfo == null) {
             // We couldn't find the specific class specified in the Intent.
             // Also the end of the line.
+            // 从Intent中无法找到相应的ActivityInfo
             err = ActivityManager.START_CLASS_NOT_FOUND;
         }
 
@@ -441,6 +445,7 @@ class ActivityStarter {
         abort |= !mService.mIntentFirewall.checkStartActivity(intent, callingUid,
                 callingPid, resolvedType, aInfo.applicationInfo);
 
+		// ActivityController不为空的情况，比如monkey测试过程
         if (mService.mController != null) {
             try {
                 // The Intent we give to the watcher has the extra data
@@ -465,6 +470,7 @@ class ActivityStarter {
         callingUid = mInterceptor.mCallingUid;
         options = mInterceptor.mActivityOptions;
         if (abort) {
+			//权限检查不满足，才进入该分支直接返回
             if (resultRecord != null) {
                 resultStack.sendActivityResultLocked(-1, resultRecord, resultWho, requestCode,
                         RESULT_CANCELED, null);
@@ -547,13 +553,16 @@ class ActivityStarter {
             r.appTimeTracker = sourceRecord.appTimeTracker;
         }
 
+		// 将mFocusedStack赋予当前stack
         final ActivityStack stack = mSupervisor.mFocusedStack;
         if (voiceSession == null && (stack.mResumedActivity == null
                 || stack.mResumedActivity.info.applicationInfo.uid != callingUid)) {
+            // 前台stack还没有resume状态的Activity时，则检查app切换是否允许
             if (!mService.checkAppSwitchAllowedLocked(callingPid, callingUid,
                     realCallingPid, realCallingUid, "Activity start")) {
                 PendingActivityLaunch pal =  new PendingActivityLaunch(r,
                         sourceRecord, startFlags, stack, callerApp);
+				// 当不允许切换，则要把启动的Activity添加到mPendingActivityLaunches对象，并且直接返回
                 mPendingActivityLaunches.add(pal);
                 ActivityOptions.abort(options);
                 return ActivityManager.START_SWITCHES_CANCELED;
@@ -566,11 +575,15 @@ class ActivityStarter {
             // home (switches disabled, switch to home, mDidAppSwitch now true);
             // user taps a home icon (coming from home so allowed, we hit here
             // and now allow anyone to switch again).
+            // 从上次禁止app切换以来，这是第二次允许app切换，因此将允许切换时间置为0，
+            // 则表示可以任意切换app
             mService.mAppSwitchesAllowedTime = 0;
         } else {
             mService.mDidAppSwitch = true;
         }
 
+		// 处理Pending Activity的启动,这些App是由于app switch禁用从而被hold的
+		// 等待启动Activity
         doPendingActivityLaunchesLocked(false);
 
         return startActivity(r, sourceRecord, voiceSession, voiceInteractor, startFlags, true,
@@ -675,8 +688,29 @@ class ActivityStarter {
     }
 
 	/**
-	 * @参数 inTask(倒数第二个) 代表启动的Activity所在的栈
-	 * @参数 reason(倒数第一个) 代表启动的理由
+	 * @参数 caller ApplicationThreadProxy，用于跟调用者进程Application Thread进行通信的binder代理类
+	 * @参数 callingUid 传入的值是-1
+	 * @参数 callingPackage ContextImpl.getBasePackageName(),获取调用者Activity所在包名
+	 * @参数 intent 这是启动Activity时传过来的参数
+	 * @参数 resolvedType intent.resolveTypeIfNeeded
+	 * @参数 voiceSession 传入的值是null
+	 * @参数 voiceInteractor 传入的值是null
+	 * @参数 resultTo Activity.mToken,其中Activity是指调用者所在的Activity,
+	 				  mToken对象保存自己所处的ActivityRecord信息
+	 * @参数 resultWho Activity.mEmbeddedID,其中Activity是指调用者所在Activity
+	 * @参数 requestCode 传入的值是-1
+	 * @参数 startFlags 传入的值是0
+	 * @参数 profilerInfo 传入的值是null
+	 * @参数 outResult 传入的值是null
+	 * @参数 config 传入的值是null
+	 * @参数 options 传入的值是null
+	 * @参数 ignoreTargetSecurity 传入的值是false
+	 * @参数 userId AMS.handleIncomingUser,当调用者userId跟当前处于同一个userId,
+	                则直接返回该userId;当不相等时则根据调用者userId来决定是否需要将
+	                callingUserId转换为mCurrentUserId
+	 * @参数 iContainer 传入的值是null
+	 * @参数 inTask 代表启动的Activity所在的栈
+	 * @参数 reason 代表启动的理由
 	 */
     final int startActivityMayWait(IApplicationThread caller, int callingUid,
             String callingPackage, Intent intent, String resolvedType,
@@ -734,6 +768,7 @@ class ActivityStarter {
             }
         }
         // Collect information about the target of the Intent.
+        // 收集Intent所指向的Activity信息,当存在多个可供选择的Activity,则直接向用户展示resolveActivity
         ActivityInfo aInfo = mSupervisor.resolveActivity(intent, rInfo, startFlags, profilerInfo);
 
         ActivityOptions options = ActivityOptions.fromBundle(bOptions);
@@ -1195,7 +1230,7 @@ class ActivityStarter {
 
         // Should this be considered a new task?
         int result = START_SUCCESS;
-		// 当启动根Activity时会将Itent的Flag设置为FLAG_ACTIVITY_NEW_TASK，这样就会满足此处条件
+		// 当启动根Activity时会将Intent的Flag设置为FLAG_ACTIVITY_NEW_TASK，这样就会满足此处条件
         if (mStartActivity.resultTo == null && mInTask == null && !mAddingToTask
                 && (mLaunchFlags & FLAG_ACTIVITY_NEW_TASK) != 0) {
             newTask = true;
